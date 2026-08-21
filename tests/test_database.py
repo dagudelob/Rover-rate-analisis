@@ -83,3 +83,18 @@ def test_save_and_retrieve_session():
     session_updated = get_session_by_id(session_id)
     assert session_updated["sitters"][0]["is_excluded"] == 1
     assert session_updated["sitters"][0]["excluded_reason"] == "Test exclusion"
+
+def test_delete_session_and_batch():
+    init_db()
+    stats = {"min_price": 20, "avg_price": 20, "median_price": 20, "p25_price": 20, "p75_price": 20, "max_price": 20}
+    s1 = save_scrape_results("City A", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 1", "price_numeric": 20}])
+    s2 = save_scrape_results("City B", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 2", "price_numeric": 20}])
+    
+    # Test single delete
+    from database import delete_session, delete_sessions
+    assert delete_session(s1) is True
+    assert get_session_by_id(s1) is None
+    
+    # Test batch delete
+    assert delete_sessions([s2]) == 1
+    assert get_session_by_id(s2) is None

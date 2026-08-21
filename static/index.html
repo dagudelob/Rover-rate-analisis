@@ -536,7 +536,19 @@
 
         <!-- Saved Search History List -->
         <div class="card" style="grid-column: span 2;">
-          <h3 class="card-title">Saved Search Sessions</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <h3 class="card-title" style="margin-bottom: 0;">Saved Search Sessions</h3>
+              <span id="historySessionsBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sessions</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button id="btnSelectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Select All</button>
+              <button id="btnDeselectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Deselect</button>
+              <button id="btnDeleteSelectedSessions" class="btn-danger" style="display: none; font-size: 0.78rem; padding: 0.3rem 0.75rem; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
+                🗑️ Delete Selected (<span id="deleteCountBadge">0</span>)
+              </button>
+            </div>
+          </div>
           <div id="historyList"></div>
         </div>
       </div>

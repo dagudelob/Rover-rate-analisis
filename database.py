@@ -202,6 +202,25 @@ def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
         result["sitters"] = [dict(s) for s in sitters]
         return result
 
+def delete_session(session_id: int) -> bool:
+    """Deletes a single search session and its associated sitter listings."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sitter_listings WHERE session_id = ?", (session_id,))
+        cursor.execute("DELETE FROM search_sessions WHERE id = ?", (session_id,))
+        return cursor.rowcount > 0
+
+def delete_sessions(session_ids: List[int]) -> int:
+    """Batch deletes multiple search sessions and associated sitter listings."""
+    if not session_ids:
+        return 0
+    placeholders = ",".join("?" for _ in session_ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"DELETE FROM sitter_listings WHERE session_id IN ({placeholders})", session_ids)
+        cursor.execute(f"DELETE FROM search_sessions WHERE id IN ({placeholders})", session_ids)
+        return cursor.rowcount
+
 def get_master_historical_data() -> List[Dict[str, Any]]:
     """
     Retrieves all records joined with session timestamps and location metadata
