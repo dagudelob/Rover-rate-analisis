@@ -79,3 +79,23 @@ def test_day_care_service_matching():
     raw, num, unit = extract_service_price(card, "day-care")
     assert num == 35.0
     assert unit == "per day"
+
+
+def test_all_services_master_catalog_extraction():
+    from app.services.scraper.parser import extract_all_services_and_prices
+
+    card = """
+    1. Taylor B.
+    $25 per walk
+    $65 per night
+    $20 per visit
+    $35 per day
+    5.0 stars (50 reviews)
+    """
+    extracted = extract_all_services_and_prices(card, price_text="$25 per walk")
+    types = {srv["service_type"]: srv["price_numeric"] for srv in extracted}
+    assert types["dog-walking"] == 25.0
+    assert types["overnight-boarding"] == 65.0
+    assert types["drop-in-visits"] == 20.0
+    assert types["day-care"] == 35.0
+

@@ -1345,6 +1345,15 @@ function renderTable(records) {
         const profileLink = r.profile_url ? `<a href="${r.profile_url}" target="_blank" style="color:var(--accent-primary); text-decoration:none; font-weight:500;" onclick="event.stopPropagation();">Profile ↗</a>` : "--";
         const coverageArea = r.neighborhood ? `<span style="color:var(--accent-primary); font-weight:500;">${escapeHtml(r.neighborhood)}</span> (~${r.service_radius_km || 2} km)` : `~${r.service_radius_km || 2} km radius`;
 
+        let servicePillsHtml = "";
+        if (r.services && r.services.length > 0) {
+            const pills = r.services.map(srv => {
+                const sName = srv.service_name.replace("Dog ", "").replace("Overnight ", "");
+                return `<span class="badge-price" style="font-size:0.7rem; padding: 0.15rem 0.4rem; background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-primary);" title="${escapeHtml(srv.service_name)}: $${srv.price_numeric} (${escapeHtml(srv.rate_unit)})">${escapeHtml(sName)}: <strong>$${srv.price_numeric}</strong></span>`;
+            }).join(" ");
+            servicePillsHtml = `<div style="display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.35rem;">${pills}</div>`;
+        }
+
         tr.innerHTML = `
             <td style="text-align: center;">
                 <input type="checkbox" ${!isExcluded ? "checked" : ""} title="Check to include in statistics, uncheck to exclude" onclick="event.stopPropagation();" onchange="toggleSitterExclusion(${origIdx})">
@@ -1355,6 +1364,7 @@ function renderTable(records) {
                     ${outlierTag}
                 </div>
                 ${r.headline ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(r.headline)}</div>` : ''}
+                ${servicePillsHtml}
             </td>
             <td>${priceBadge}</td>
             <td style="font-size:0.82rem; color:var(--text-secondary);">${coverageArea}</td>

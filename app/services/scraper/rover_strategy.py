@@ -65,10 +65,12 @@ class RoverScraperStrategy(BaseScraperStrategy):
         playwright, browser, context, page = await create_browser_context(proxy_url)
         emit("log", {"message": "Launching Chromium browser with stealth anti-detection flags..."})
 
+        query_service = "dog-walking" if service_type == "all-services" else service_type
+
         try:
             for current_page in range(1, max_pages + 1):
                 url = (
-                    f"https://www.rover.com/search/?service_type={service_type}"
+                    f"https://www.rover.com/search/?service_type={query_service}"
                     f"&location={encoded_location}&page={current_page}"
                 )
                 if radius_miles is not None:

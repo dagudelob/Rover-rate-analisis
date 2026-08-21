@@ -20,14 +20,16 @@ logger = logging.getLogger("rover.services.scraper.parser")
 # ── Service-to-Unit Token Mapping ──────────────────────────────────────────────
 
 SERVICE_UNIT_EXPECTATIONS: Dict[str, List[str]] = {
+    "all-services":       ["walk", "night", "visit", "day"],
     "dog-walking":        ["walk"],
-    "drop-in-visits":     ["visit"],
+    "drop-in-visits":     ["visit", "drop-in", "drop in"],
     "overnight-boarding": ["night"],
     "house-sitting":      ["night"],
     "day-care":           ["day"],
 }
 
 SERVICE_NAMES: Dict[str, str] = {
+    "all-services":       "🌐 All Services (Master Sitter Catalog)",
     "dog-walking":        "Dog Walking",
     "overnight-boarding": "Overnight Boarding",
     "drop-in-visits":     "Drop-in Visits",
