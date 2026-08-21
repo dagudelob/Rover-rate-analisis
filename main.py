@@ -2,7 +2,9 @@ import asyncio
 import json
 import io
 import csv
+import logging
 from typing import Optional, List
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +15,9 @@ import os
 from scraper import scrape_rover_with_events, SERVICE_NAMES
 from analytics import calculate_market_statistics, detect_outliers_iqr
 from database import (
+    init_db,
     save_scrape_results,
+    update_sitter_exclusion,
     get_all_sessions,
     get_session_by_id,
     get_master_historical_data,
@@ -21,10 +25,27 @@ from database import (
     DB_PATH
 )
 
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
+)
+logger = logging.getLogger("rover.api")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager: initializes database schema on startup."""
+    logger.info("Initializing Rover Market Intelligence database schema and indexes...")
+    init_db()
+    logger.info("Application startup complete.")
+    yield
+    logger.info("Application shutting down.")
+
 app = FastAPI(
     title="Rover.com Market Intelligence Platform",
     description="Anti-detection multi-page scraper, outlier studio, historical data archive & analytics for Rover.com",
-    version="2.0.0"
+    version="2.1.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -44,8 +65,13 @@ if not os.path.exists(STATIC_DIR):
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 class RecalculateRequest(BaseModel):
-    records: List[dict]
-    excluded_indices: List[int]
+    session_id: Optional[int] = None
+    records: Optional[List[dict]] = None
+    excluded_indices: List[int] = []
+
+class SitterExclusionRequest(BaseModel):
+    is_excluded: bool
+    reason: Optional[str] = "Manual outlier toggle"
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
@@ -74,25 +100,53 @@ async def get_session_details(session_id: int):
         raise HTTPException(status_code=404, detail="Session not found")
     
     sitters = session.get("sitters", [])
-    stats = calculate_market_statistics(sitters)
+    
+    # Check if any sitters were previously marked as excluded in DB
+    pre_excluded_indices = {
+        idx for idx, s in enumerate(sitters)
+        if s.get("is_excluded") == 1
+    }
+    
+    stats = calculate_market_statistics(sitters, excluded_indices=pre_excluded_indices)
     outliers = detect_outliers_iqr(sitters)
     
     session["full_stats"] = stats
     session["auto_outliers"] = outliers
+    session["persisted_excluded_indices"] = list(pre_excluded_indices)
     return session
 
 @app.post("/api/analytics/recalculate")
 async def recalculate_stats(req: RecalculateRequest):
     """
     Recalculates advanced market statistics dynamically given active vs excluded record indices.
+    Can resolve sitters directly by session_id or from client records payload.
     """
+    records_to_process = []
+    
+    if req.session_id:
+        session = get_session_by_id(req.session_id)
+        if session:
+            records_to_process = session.get("sitters", [])
+            
+    if not records_to_process and req.records is not None:
+        records_to_process = req.records
+        
     excluded_set = set(req.excluded_indices)
-    stats = calculate_market_statistics(req.records, excluded_indices=excluded_set)
-    auto_outliers = detect_outliers_iqr(req.records)
+    stats = calculate_market_statistics(records_to_process, excluded_indices=excluded_set)
+    auto_outliers = detect_outliers_iqr(records_to_process)
+    
     return {
         "stats": stats,
         "auto_outliers": auto_outliers
     }
+
+@app.post("/api/sitters/{sitter_id}/exclude")
+async def toggle_sitter_exclusion(sitter_id: int, req: SitterExclusionRequest):
+    """Persists a sitter exclusion state into the database."""
+    success = update_sitter_exclusion(sitter_id, req.is_excluded, req.reason)
+    if not success:
+        raise HTTPException(status_code=404, detail="Sitter listing not found")
+    return {"status": "success", "sitter_id": sitter_id, "is_excluded": req.is_excluded}
 
 @app.get("/api/analytics/temporal-trends")
 async def temporal_trends():
@@ -157,6 +211,7 @@ async def scrape_stream(
                     "center_lng": result.get("center_lng")
                 })
             except Exception as e:
+                logger.error(f"Error during scrape streaming execution: {e}", exc_info=True)
                 push_event("error", {"message": str(e)})
             finally:
                 push_event("end", {})
@@ -199,7 +254,7 @@ async def export_csv(session_id: int):
     writer.writerow([
         "ID", "Name", "Raw_Price", "Price_Numeric", "Rating",
         "Review_Count", "Headline", "Neighborhood", "Latitude", "Longitude", "Service_Radius_KM",
-        "Service_Type", "Location_Query", "Page", "Profile_URL"
+        "Service_Type", "Location_Query", "Page", "Profile_URL", "Is_Excluded", "Excluded_Reason"
     ])
     
     for s in sitters:
@@ -218,7 +273,9 @@ async def export_csv(session_id: int):
             s.get("service_type"),
             s.get("location_query"),
             s.get("page"),
-            s.get("profile_url")
+            s.get("profile_url"),
+            s.get("is_excluded"),
+            s.get("excluded_reason")
         ])
     
     output.seek(0)
@@ -242,7 +299,8 @@ async def export_master_csv():
     writer.writerow([
         "Session_ID", "Session_Date_ISO", "Session_Location", "Service_Type", "Search_Radius_KM",
         "Sitter_ID", "Sitter_Name", "Raw_Price", "Price_Numeric", "Rating",
-        "Review_Count", "Neighborhood", "Latitude", "Longitude", "Service_Radius_KM", "Profile_URL"
+        "Review_Count", "Neighborhood", "Latitude", "Longitude", "Service_Radius_KM", "Profile_URL",
+        "Is_Excluded", "Excluded_Reason"
     ])
     
     for r in rows:
@@ -262,7 +320,9 @@ async def export_master_csv():
             r.get("lat"),
             r.get("lng"),
             r.get("service_radius_km"),
-            r.get("profile_url")
+            r.get("profile_url"),
+            r.get("is_excluded"),
+            r.get("excluded_reason")
         ])
         
     output.seek(0)

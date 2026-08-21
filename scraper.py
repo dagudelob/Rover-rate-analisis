@@ -1,6 +1,8 @@
 import asyncio
 import random
 import re
+import math
+import logging
 from typing import List, Dict, Optional, Callable, Any, Tuple
 import urllib.parse
 import urllib.request
@@ -8,6 +10,8 @@ import json
 import pandas as pd
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
+
+logger = logging.getLogger("rover.scraper")
 
 SERVICE_NAMES = {
     "dog-walking": "Dog Walking",
@@ -252,7 +256,6 @@ async def scrape_rover_with_events(
                     angle = (total_idx * 137.5077) % 360
                     dist_km = 0.25 + (total_idx % 15) * (max_offset_km / 15.0)
                     
-                    import math
                     d_lat = (dist_km / 111.0) * math.cos(math.radians(angle))
                     d_lng = (dist_km / (111.0 * math.cos(math.radians(center_lat)))) * math.sin(math.radians(angle))
                     

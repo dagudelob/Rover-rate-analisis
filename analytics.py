@@ -1,11 +1,15 @@
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
+import logging
+
+logger = logging.getLogger("rover.analytics")
 
 def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices: Optional[set] = None) -> Dict[str, Any]:
     """
-    Computes comprehensive market price metrics, percentiles, advanced dispersion indicators,
-    and calculates the Optimal Pricing Revenue Maximizer based on Price vs. Booking Conversion probability.
+    Computes comprehensive market price metrics, percentiles, dispersion indicators,
+    and calculates the Optimal Pricing Revenue Maximizer based on Empirical Survival Analysis
+    and Price Elasticity of Demand.
     """
     if excluded_indices is None:
         excluded_indices = set()
@@ -38,6 +42,7 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
                 "sweet_spot_price": None,
                 "recommended_range": {"min": None, "max": None},
                 "max_expected_revenue_index": None,
+                "strategy": "No data",
                 "curve": []
             }
         }
@@ -64,10 +69,8 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
         trimmed_mean = float(prices.mean())
 
     # OPTIMAL PRICING & REVENUE MAXIMIZER ALGORITHM
-    # Empirical market demand curve: Probability of being hired P(Price) is modeled by the 
-    # Empirical Survival Function S(P) = Proportion of market priced >= P, smoothed with Logistic / Cumulative Distribution.
-    # Expected Value / Revenue Potential EV(P) = P * P(hired | P) * Review_Weight
-    # This identifies the exact sweet spot that balances high booking probability vs. profit per job.
+    # Uses Empirical Survival Analysis S(P) = P(competitor_price >= P) smoothed with Gaussian Kernels
+    # Identifies the Price Elasticity of Demand (PED) and expected revenue sweet spot.
     optimizer_data = calculate_pricing_sweet_spot(prices, reviews)
 
     stats = {
@@ -98,7 +101,7 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
         min_p = stats["min_price"]
         max_p = stats["max_price"]
         if min_p == max_p:
-            bins = [min_p - 5, min_p + 5]
+            bins = [min_p - 5.0, min_p + 5.0]
         else:
             num_bins = min(8, max(4, len(prices.unique())))
             bins = np.linspace(min_p, max_p, num_bins + 1)
@@ -114,7 +117,8 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
                 "max": float(bin_edges[i+1])
             })
         stats["price_distribution"] = distribution
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error computing price histogram: {e}")
         stats["price_distribution"] = []
 
     return stats
@@ -122,57 +126,89 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
 
 def calculate_pricing_sweet_spot(prices: pd.Series, reviews: pd.Series) -> Dict[str, Any]:
     """
-    Computes the optimal price point and recommended price range that maximizes expected revenue:
-    Expected Revenue(P) = Price * Probability(Hired at Price P).
+    Computes the optimal price point and recommended price bracket by modeling
+    the Empirical Survival Function (ESF) smoothed with individual logistic kernel estimators.
+
+    Theory:
+    1. Booking Probability P(Hired | Price P):
+       P(Hired | P) = (1/N) * sum_i ( 1 / (1 + exp((P - P_i) / bandwidth)) )
+       This represents the proportion of competitors against whom this price is competitive.
+    2. Expected Revenue Index:
+       EVI(P) = P * P(Hired | P)
+    3. Price Elasticity of Demand (PED):
+       Elasticity e(P) = (P / P(Hired | P)) * d[P(Hired | P)]/dP
+       At maximum revenue, elasticity is unitary (|e| ≈ 1.0).
     """
     if prices.empty:
         return {
             "sweet_spot_price": None,
             "recommended_range": {"min": None, "max": None},
+            "max_expected_index": None,
             "strategy": "No data",
             "curve": []
         }
 
-    min_p = max(5, int(prices.min()))
-    max_p = int(prices.max() + 5)
+    price_array = prices.to_numpy(dtype=float)
+    n = len(price_array)
+    std_val = float(np.std(price_array)) if n > 1 else 5.0
     
-    # Generate candidate price points
-    candidate_prices = np.linspace(min_p, max_p, 25)
-    curve = []
-    
-    mean_p = float(prices.mean())
-    std_p = float(prices.std()) if len(prices) > 1 and float(prices.std()) > 0 else 5.0
+    # Silverman's rule of thumb bandwidth for kernel smoothing
+    bandwidth = max(1.5, 1.06 * (std_val or 5.0) * (n ** (-0.2)))
 
-    best_price = float(prices.median())
+    min_candidate = max(5.0, float(np.min(price_array)) * 0.75)
+    max_candidate = float(np.max(price_array)) * 1.25
+    
+    candidate_prices = np.linspace(min_candidate, max_candidate, 35)
+    curve = []
+
+    best_price = float(np.median(price_array))
     max_expected_score = -1.0
 
     for p in candidate_prices:
-        # Market competitive acceptance: proportion of competitors priced higher + normal sigmoid tail
-        # At very low prices, conversion prob -> 95%. At very high prices, conversion prob -> 10%
-        # Standardized z-score
-        z = (p - mean_p) / std_p
+        # Smooth Empirical Survival Function: average logistic probability of beating each competitor
+        # When p < p_i, exp is negative -> prob -> 1.0
+        # When p > p_i, exp is positive -> prob -> 0.0
+        competitor_diffs = (p - price_array) / bandwidth
+        # Clip diffs to avoid overflow in exp
+        competitor_diffs = np.clip(competitor_diffs, -15.0, 15.0)
+        individual_win_probs = 1.0 / (1.0 + np.exp(competitor_diffs))
         
-        # Logistic probability curve for booking conversion
-        # Higher price -> lower conversion probability
-        conversion_prob = 1.0 / (1.0 + np.exp(1.2 * z))
+        conversion_prob = float(np.mean(individual_win_probs))
         conversion_pct = round(conversion_prob * 100, 1)
-        
-        # Expected Revenue Index = Price * Conversion_Probability
+
+        # Expected Revenue Index = Price * Booking Probability
         expected_revenue_index = round(float(p * conversion_prob), 2)
+
+        # Numerical derivative for Price Elasticity of Demand (PED)
+        dp = 0.05
+        diff_plus = np.clip((p + dp - price_array) / bandwidth, -15.0, 15.0)
+        prob_plus = float(np.mean(1.0 / (1.0 + np.exp(diff_plus))))
+        d_prob_dp = (prob_plus - conversion_prob) / dp
         
+        elasticity = round(float((p / max(0.001, conversion_prob)) * d_prob_dp), 2)
+
         curve.append({
             "price": round(float(p), 1),
             "conversion_probability_pct": conversion_pct,
-            "expected_revenue_index": expected_revenue_index
+            "expected_revenue_index": expected_revenue_index,
+            "elasticity": elasticity
         })
 
         if expected_revenue_index > max_expected_score:
             max_expected_score = expected_revenue_index
             best_price = round(float(p), 1)
 
-    # Calculate optimal recommended bracket: +/- 10% around maximum expected value
+    # Strategy classification based on market structure
+    median_p = float(np.median(price_array))
+    if best_price > median_p * 1.1:
+        strategy_name = "Premium Value Positioning (High margin with moderate booking volume)"
+    elif best_price < median_p * 0.9:
+        strategy_name = "Market Penetration (High volume acquisition strategy)"
+    else:
+        strategy_name = "Competitive Sweet Spot (Balanced margin and maximum expected yield)"
+
     rec_min = round(best_price * 0.90, 1)
-    rec_max = round(best_price * 1.12, 1)
+    rec_max = round(best_price * 1.10, 1)
 
     return {
         "sweet_spot_price": best_price,
@@ -181,6 +217,7 @@ def calculate_pricing_sweet_spot(prices: pd.Series, reviews: pd.Series) -> Dict[
             "max": rec_max
         },
         "max_expected_index": max_expected_score,
+        "strategy": strategy_name,
         "curve": curve
     }
 
@@ -195,8 +232,8 @@ def detect_outliers_iqr(records: List[Dict[str, Any]]) -> List[int]:
 
     prices = [float(records[idx]["price_numeric"]) for idx in valid_indices]
     s = pd.Series(prices)
-    q25 = s.quantile(0.25)
-    q75 = s.quantile(0.75)
+    q25 = float(s.quantile(0.25))
+    q75 = float(s.quantile(0.75))
     iqr = q75 - q25
     lower = q25 - 1.5 * iqr
     upper = q75 + 1.5 * iqr

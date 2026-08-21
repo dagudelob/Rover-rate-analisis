@@ -132,6 +132,7 @@ async function loadSessionDetails(sessionId) {
         
         currentRecords = data.sitters || [];
         currentExcludedIndices.clear();
+        (data.persisted_excluded_indices || []).forEach(idx => currentExcludedIndices.add(idx));
         currentAutoOutliers = data.auto_outliers || [];
         currentCenterLat = data.center_lat;
         currentCenterLng = data.center_lng;
@@ -370,10 +371,14 @@ function renderRevenueOptimizationChart(curveData, sweetSpotPrice) {
                     callbacks: {
                         afterLabel: (ctx) => {
                             const p = curveData[ctx.dataIndex];
-                            if (p.price === sweetSpotPrice) {
-                                return "⭐ OPTIMAL REVENUE SWEET SPOT";
+                            let extra = "";
+                            if (p && p.elasticity !== undefined) {
+                                extra += `\nPrice Elasticity (PED): ${p.elasticity}`;
                             }
-                            return "";
+                            if (p && p.price === sweetSpotPrice) {
+                                extra += "\n⭐ OPTIMAL REVENUE SWEET SPOT (Unitary Elasticity)";
+                            }
+                            return extra;
                         }
                     }
                 }
@@ -425,11 +430,27 @@ function setupOutlierToolbar() {
 }
 
 async function toggleSitterExclusion(index) {
-    if (currentExcludedIndices.has(index)) {
-        currentExcludedIndices.delete(index);
-    } else {
+    const isNowExcluded = !currentExcludedIndices.has(index);
+    if (isNowExcluded) {
         currentExcludedIndices.add(index);
+    } else {
+        currentExcludedIndices.delete(index);
     }
+    
+    // Persist to database if sitter has an assigned DB ID
+    const sitter = currentRecords[index];
+    if (sitter && sitter.id) {
+        try {
+            fetch(`/api/sitters/${sitter.id}/exclude`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ is_excluded: isNowExcluded, reason: "Manual outlier toggle" })
+            }).catch(e => console.warn("Could not persist sitter exclusion to DB:", e));
+        } catch (e) {
+            console.warn("Error updating exclusion state:", e);
+        }
+    }
+
     await recalculateAndRefresh();
 }
 
@@ -439,6 +460,7 @@ async function recalculateAndRefresh() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+                session_id: currentSessionId,
                 records: currentRecords,
                 excluded_indices: Array.from(currentExcludedIndices)
             })
