@@ -65,6 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     setupSidebarNavigation();
     setupCollapsibleTable();
+    setupCollapsibleHistorySection();
     setupPlatformSelector();
     loadServices("rover");
     loadHistory();
@@ -598,6 +599,27 @@ function setupCollapsibleTable() {
             toggleIcon.style.transform = "rotate(180deg)";
         } else {
             toggleText.textContent = "Collapse Table";
+            toggleIcon.style.transform = "rotate(0deg)";
+        }
+    });
+}
+
+// Collapsible Saved Search History Setup
+function setupCollapsibleHistorySection() {
+    const toggleBtn = document.getElementById("btnToggleHistorySection");
+    const wrapper = document.getElementById("historyCollapsibleWrapper");
+    const toggleText = document.getElementById("historyToggleText");
+    const toggleIcon = document.getElementById("historyToggleIcon");
+
+    if (!toggleBtn || !wrapper) return;
+
+    toggleBtn.addEventListener("click", () => {
+        const isCollapsed = wrapper.classList.toggle("collapsed");
+        if (isCollapsed) {
+            toggleText.textContent = "Expand Section";
+            toggleIcon.style.transform = "rotate(180deg)";
+        } else {
+            toggleText.textContent = "Collapse Section";
             toggleIcon.style.transform = "rotate(0deg)";
         }
     });

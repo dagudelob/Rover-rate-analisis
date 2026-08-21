@@ -624,7 +624,11 @@
               <h3 class="card-title" style="margin-bottom: 0;">Saved Search Sessions</h3>
               <span id="historySessionsBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sessions</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <button id="btnToggleHistorySection" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.75rem; display: inline-flex; align-items: center; gap: 0.4rem;" title="Collapse/Expand History Sessions">
+                <span id="historyToggleText">Collapse Section</span>
+                <svg id="historyToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.25s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
               <button id="btnSelectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Select All</button>
               <button id="btnDeselectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Deselect</button>
               <button id="btnDeleteSelectedSessions" class="btn-danger" style="display: none; font-size: 0.78rem; padding: 0.3rem 0.75rem; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
@@ -632,7 +636,9 @@
               </button>
             </div>
           </div>
-          <div id="historyList"></div>
+          <div id="historyCollapsibleWrapper" class="collapsible-table-wrapper">
+            <div id="historyList"></div>
+          </div>
         </div>
       </div>
     </section>
