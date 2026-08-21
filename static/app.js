@@ -190,7 +190,7 @@ async function loadHistory() {
                     <div class="avg">${avgDisplay}</div>
                     <p style="font-size:0.7rem; color:var(--text-muted);">Session #${s.id}</p>
                 </div>
-                <button class="btn-delete-single" title="Delete this session from database" style="background: transparent; border: none; color: #ef4444; opacity: 0.6; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; transition: opacity 0.15s;" onclick="event.stopPropagation(); deleteSingleHistorySession(${s.id})">
+                <button class="btn-delete-single" data-session-id="${s.id}" title="Delete this session from database" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.35rem 0.5rem; font-size: 1.1rem; transition: transform 0.15s; border-radius: 4px;">
                     🗑️
                 </button>
             `;
@@ -208,6 +208,13 @@ async function loadHistory() {
                     selectedHistorySessionIds.delete(s.id);
                 }
                 updateHistoryDeleteToolbar();
+            });
+
+            // Single item trash button listener
+            const trashBtn = item.querySelector(".btn-delete-single");
+            trashBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                deleteSingleHistorySession(s.id);
             });
 
             list.appendChild(item);
@@ -256,9 +263,7 @@ function setupHistoryToolbarHandlers(sessions) {
     if (btnDelete) {
         btnDelete.onclick = async () => {
             if (selectedHistorySessionIds.size === 0) return;
-            const confirmed = confirm(`Are you sure you want to permanently delete ${selectedHistorySessionIds.size} session(s) from the database?`);
-            if (!confirmed) return;
-
+            const count = selectedHistorySessionIds.size;
             try {
                 const res = await fetch("/api/history", {
                     method: "DELETE",
@@ -267,28 +272,26 @@ function setupHistoryToolbarHandlers(sessions) {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    logToTerminal(`[DB] Deleted ${data.deleted_count || selectedHistorySessionIds.size} session(s).`, "info");
+                    logToTerminal(`[DB] Successfully deleted ${data.deleted_count || count} session(s) from SQLite.`, "success");
                     selectedHistorySessionIds.clear();
                     await loadHistory();
                     await loadTemporalTrends();
                 } else {
-                    alert("Could not delete sessions.");
+                    logToTerminal("[DB Error] Could not delete sessions from database.", "error");
                 }
             } catch (err) {
                 console.error("Error deleting sessions:", err);
+                logToTerminal(`[DB Error] ${err.message}`, "error");
             }
         };
     }
 }
 
 async function deleteSingleHistorySession(sessionId) {
-    const confirmed = confirm(`Delete session #${sessionId} and all its sitter listings?`);
-    if (!confirmed) return;
-
     try {
         const res = await fetch(`/api/history/${sessionId}`, { method: "DELETE" });
         if (res.ok) {
-            logToTerminal(`[DB] Deleted session #${sessionId}.`, "info");
+            logToTerminal(`[DB] Deleted session #${sessionId} and all its listings.`, "info");
             selectedHistorySessionIds.delete(sessionId);
             if (currentSessionId === sessionId) {
                 currentSessionId = null;
@@ -296,12 +299,15 @@ async function deleteSingleHistorySession(sessionId) {
             await loadHistory();
             await loadTemporalTrends();
         } else {
-            alert("Could not delete session.");
+            logToTerminal(`[DB Error] Could not delete session #${sessionId}.`, "error");
         }
     } catch (err) {
         console.error("Error deleting single session:", err);
     }
 }
+
+// Expose globally
+window.deleteSingleHistorySession = deleteSingleHistorySession;
 
 // 4. Load Detailed Session
 async function loadSessionDetails(sessionId) {
