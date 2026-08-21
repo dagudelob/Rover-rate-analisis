@@ -187,6 +187,61 @@ def extract_price(
     return price_numeric, raw_price, rate_unit
 
 
+def extract_all_services_and_prices(card_text: str, price_text: str = "") -> List[Dict[str, Any]]:
+    """
+    Extracts all services and corresponding rates advertised by a sitter.
+    Scans for all 5 Rover service categories and their respective unit rates.
+    Returns a list of dicts: [{"service_type": "...", "service_name": "...", "price_numeric": XX.X, "rate_unit": "..."}]
+    """
+    extracted_services: List[Dict[str, Any]] = []
+    seen_types = set()
+
+    # Pattern mapping for unit detection
+    unit_to_service = {
+        "walk": ("dog-walking", "Dog Walking", "per walk"),
+        "visit": ("drop-in-visits", "Drop-In Visits", "per visit"),
+        "night": ("overnight-boarding", "Overnight Boarding", "per night"),
+        "day": ("day-care", "Day Care", "per day"),
+    }
+
+    # Scan card for explicit "$XX per [unit]" declarations
+    all_matches = re.findall(
+        r"\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)(walk|night|visit|day)",
+        card_text,
+        re.IGNORECASE,
+    )
+    for price_str, unit_str in all_matches:
+        u_key = unit_str.lower()
+        if u_key in unit_to_service:
+            srv_type, srv_name, rate_unit = unit_to_service[u_key]
+            if srv_type not in seen_types:
+                seen_types.add(srv_type)
+                extracted_services.append({
+                    "service_type": srv_type,
+                    "service_name": srv_name,
+                    "price_numeric": float(price_str),
+                    "rate_unit": rate_unit,
+                })
+
+    # If badge price exists but not captured in card regex, assign to default service
+    if price_text:
+        pm = re.search(r"\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)?(walk|night|visit|day)?", price_text, re.IGNORECASE)
+        if pm:
+            num = float(pm.group(1))
+            matched_u = (pm.group(2) or "walk").lower()
+            srv_type, srv_name, rate_unit = unit_to_service.get(matched_u, ("dog-walking", "Dog Walking", "per walk"))
+            if srv_type not in seen_types:
+                seen_types.add(srv_type)
+                extracted_services.append({
+                    "service_type": srv_type,
+                    "service_name": srv_name,
+                    "price_numeric": num,
+                    "rate_unit": rate_unit,
+                })
+
+    return extracted_services
+
+
 # ── Name / Headline / Rating Parsing ──────────────────────────────────────────
 
 def parse_sitter_name_and_headline(
@@ -311,6 +366,17 @@ def build_sitter_record(
     name, headline = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
     rating, rating_numeric, reviews, reviews_count = parse_rating_and_reviews(card_text)
     lat, lng, service_radius_km = compute_sitter_coordinates(total_idx, center_lat, center_lng, radius_km)
+    all_services = extract_all_services_and_prices(card_text, price_text)
+
+    # Ensure the primary requested service is present in the services catalog
+    has_primary = any(s["service_type"] == service_type for s in all_services)
+    if not has_primary and price_numeric is not None:
+        all_services.append({
+            "service_type": service_type,
+            "service_name": SERVICE_NAMES.get(service_type, service_type.title()),
+            "price_numeric": price_numeric,
+            "rate_unit": rate_unit,
+        })
 
     return {
         "name": name,
@@ -331,4 +397,5 @@ def build_sitter_record(
         "lat": lat,
         "lng": lng,
         "service_radius_km": service_radius_km,
+        "services": all_services,
     }

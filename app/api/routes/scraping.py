@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from app.services.scraper import SERVICE_NAMES, scrape_rover_with_events
 from app.services.scraper.factory import get_scraper_strategy, list_supported_platforms
 from app.services.analytics import calculate_market_statistics, detect_outliers_iqr
-from app.db.repository import save_scrape_results
+from app.db.repository import save_scrape_results, upsert_sitters_and_services_bulk, get_all_normalized_sitters_with_services
 
 logger = logging.getLogger("rover.api.scraping")
 router = APIRouter(prefix="/api", tags=["Scraping"])
@@ -26,6 +26,15 @@ router = APIRouter(prefix="/api", tags=["Scraping"])
 async def get_platforms():
     """Returns all supported pet care marketplace platforms (Rover, Wag, Care)."""
     return {"platforms": list_supported_platforms()}
+
+
+@router.get("/sitters/normalized")
+async def get_normalized_sitters():
+    """
+    Returns the master catalog of unique sitters with all extracted multi-service prices.
+    Used for 1-click single-query master price analysis.
+    """
+    return {"sitters": get_all_normalized_sitters_with_services()}
 
 
 @router.get("/services")
@@ -86,11 +95,16 @@ async def scrape_stream(
                     records=records,
                 )
 
+                # Execute Normalized Bulk Upsert into Master Sitter & Services Store (ETL)
+                bulk_res = upsert_sitters_and_services_bulk(records, location, platform)
+                logger.info("ETL Pipeline Loaded %d sitters and %d services.", bulk_res["sitters_upserted"], bulk_res["services_upserted"])
+
                 push_event("complete", {
                     "session_id": session_id,
                     "stats": stats,
                     "auto_outliers": outliers,
                     "records": records,
+                    "etl_summary": bulk_res,
                     "location": location,
                     "service_type": service_type,
                     "radius_km": radius_km,

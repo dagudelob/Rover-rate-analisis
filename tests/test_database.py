@@ -99,3 +99,41 @@ def test_delete_session_and_batch():
     # Test batch delete
     assert delete_sessions([s2]) == 1
     assert get_session_by_id(s2) is None
+
+
+def test_etl_bulk_upsert_sitters_and_services():
+    init_db()
+    from app.db.repository import upsert_sitters_and_services_bulk, get_all_normalized_sitters_with_services
+
+    sample_sitters = [
+        {
+            "member_id": "sarah-walker-1",
+            "name": "Sarah W.",
+            "profile_url": "https://rover.com/members/sarah-walker-1",
+            "headline": "Full-time professional dog lover",
+            "photo_url": "https://example.com/sarah.jpg",
+            "rating_numeric": 4.95,
+            "reviews_count": 42,
+            "lat": 43.65,
+            "lng": -79.38,
+            "service_radius_km": 5.0,
+            "services": [
+                {"service_type": "dog-walking", "service_name": "Dog Walking", "price_numeric": 28.0, "rate_unit": "per walk"},
+                {"service_type": "overnight-boarding", "service_name": "Overnight Boarding", "price_numeric": 65.0, "rate_unit": "per night"},
+                {"service_type": "drop-in-visits", "service_name": "Drop-in Visits", "price_numeric": 22.0, "rate_unit": "per visit"}
+            ]
+        }
+    ]
+
+    result = upsert_sitters_and_services_bulk(sample_sitters, location="Toronto, ON", platform="rover")
+    assert result["sitters_upserted"] == 1
+    assert result["services_upserted"] == 3
+
+    normalized = get_all_normalized_sitters_with_services()
+    assert len(normalized) >= 1
+    sarah = next(s for s in normalized if s["member_id"] == "sarah-walker-1")
+    assert sarah["name"] == "Sarah W."
+    assert len(sarah["services"]) == 3
+    service_types = {srv["service_type"] for srv in sarah["services"]}
+    assert service_types == {"dog-walking", "overnight-boarding", "drop-in-visits"}
+

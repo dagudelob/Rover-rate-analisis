@@ -20,15 +20,15 @@ class Settings:
     # CORS — restrict to specific origins in production
     cors_origins: List[str] = os.environ.get("CORS_ORIGINS", "http://localhost:8000").split(",")
 
-    # Scraper limits
+    # Scraper limits & Anti-bot throttle timings
     scraper_max_pages: int = int(os.environ.get("SCRAPER_MAX_PAGES", "15"))
     scraper_max_results: int = int(os.environ.get("SCRAPER_MAX_RESULTS", "200"))
-    scraper_page_delay_min: float = float(os.environ.get("SCRAPER_PAGE_DELAY_MIN", "2.5"))
-    scraper_page_delay_max: float = float(os.environ.get("SCRAPER_PAGE_DELAY_MAX", "4.0"))
-    scraper_scroll_delay_min: float = float(os.environ.get("SCRAPER_SCROLL_DELAY_MIN", "700"))
-    scraper_scroll_delay_max: float = float(os.environ.get("SCRAPER_SCROLL_DELAY_MAX", "1100"))
-    scraper_load_delay_min: float = float(os.environ.get("SCRAPER_LOAD_DELAY_MIN", "2200"))
-    scraper_load_delay_max: float = float(os.environ.get("SCRAPER_LOAD_DELAY_MAX", "3200"))
+    scraper_page_delay_min: float = float(os.environ.get("SCRAPER_PAGE_DELAY_MIN", "3.5"))
+    scraper_page_delay_max: float = float(os.environ.get("SCRAPER_PAGE_DELAY_MAX", "6.5"))
+    scraper_scroll_delay_min: float = float(os.environ.get("SCRAPER_SCROLL_DELAY_MIN", "900"))
+    scraper_scroll_delay_max: float = float(os.environ.get("SCRAPER_SCROLL_DELAY_MAX", "1600"))
+    scraper_load_delay_min: float = float(os.environ.get("SCRAPER_LOAD_DELAY_MIN", "2500"))
+    scraper_load_delay_max: float = float(os.environ.get("SCRAPER_LOAD_DELAY_MAX", "4200"))
 
     # Browser / Anti-detection
     browser_user_agent: str = os.environ.get(

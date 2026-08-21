@@ -214,3 +214,137 @@ def get_master_historical_data() -> List[Dict[str, Any]]:
             """
         )
         return [dict(row) for row in cursor.fetchall()]
+
+
+# ── Bulk ETL Operations (Normalized Multi-Service Store) ────────────────────────
+
+def upsert_sitters_and_services_bulk(
+    sitter_profiles: List[Dict[str, Any]],
+    location: str,
+    platform: str = "rover"
+) -> Dict[str, int]:
+    """
+    Executes a high-performance transactional batch insert/update:
+    1. Upserts unique sitters into the master 'sitters' table.
+    2. Upserts all associated service rates into 'sitter_services'.
+    Returns count of sitters and services processed.
+    """
+    now = datetime.now().isoformat()
+    sitters_count = 0
+    services_count = 0
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+
+        for s in sitter_profiles:
+            member_id = s.get("member_id") or s.get("profile_url", "").split("/members/")[-1].strip("/")
+            if not member_id:
+                continue
+
+            # Upsert Sitter Profile
+            cursor.execute(
+                """
+                INSERT INTO sitters (
+                    member_id, name, profile_url, headline, photo_url,
+                    rating, reviews_count, location, lat, lng, service_radius_km,
+                    platform, first_scraped_at, last_updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(member_id) DO UPDATE SET
+                    name = excluded.name,
+                    headline = excluded.headline,
+                    photo_url = coalesce(excluded.photo_url, sitters.photo_url),
+                    rating = excluded.rating,
+                    reviews_count = excluded.reviews_count,
+                    location = excluded.location,
+                    lat = coalesce(excluded.lat, sitters.lat),
+                    lng = coalesce(excluded.lng, sitters.lng),
+                    service_radius_km = coalesce(excluded.service_radius_km, sitters.service_radius_km),
+                    last_updated_at = excluded.last_updated_at
+                """,
+                (
+                    member_id,
+                    s.get("name", "Rover Sitter"),
+                    s.get("profile_url", ""),
+                    s.get("headline"),
+                    s.get("photo_url"),
+                    s.get("rating_numeric") or 5.0,
+                    s.get("reviews_count") or 0,
+                    location,
+                    s.get("lat"),
+                    s.get("lng"),
+                    s.get("service_radius_km"),
+                    platform,
+                    now,
+                    now
+                )
+            )
+            sitters_count += 1
+
+            # Fetch the sitter ID
+            cursor.execute("SELECT id FROM sitters WHERE member_id = ?", (member_id,))
+            row = cursor.fetchone()
+            if not row:
+                continue
+            sitter_db_id = row["id"]
+
+            # Upsert each service rate offered by this sitter
+            services = s.get("services", [])
+            for srv in services:
+                srv_type = srv.get("service_type")
+                srv_price = srv.get("price_numeric")
+                if not srv_type or srv_price is None:
+                    continue
+
+                cursor.execute(
+                    """
+                    INSERT INTO sitter_services (
+                        sitter_id, service_type, service_name, price_numeric,
+                        rate_unit, is_active, last_verified_at
+                    ) VALUES (?, ?, ?, ?, ?, 1, ?)
+                    ON CONFLICT(sitter_id, service_type) DO UPDATE SET
+                        price_numeric = excluded.price_numeric,
+                        rate_unit = excluded.rate_unit,
+                        service_name = excluded.service_name,
+                        is_active = 1,
+                        last_verified_at = excluded.last_verified_at
+                    """,
+                    (
+                        sitter_db_id,
+                        srv_type,
+                        srv.get("service_name", srv_type.replace("-", " ").title()),
+                        float(srv_price),
+                        srv.get("rate_unit", "per service"),
+                        now
+                    )
+                )
+                services_count += 1
+
+    logger.info("ETL Bulk Upsert Complete: %d sitters, %d service prices.", sitters_count, services_count)
+    return {"sitters_upserted": sitters_count, "services_upserted": services_count}
+
+
+def get_all_normalized_sitters_with_services() -> List[Dict[str, Any]]:
+    """
+    Returns all master sitters joined with their full catalog of service pricing.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, member_id, name, profile_url, headline, photo_url,
+                   rating, reviews_count, location, lat, lng, platform, last_updated_at
+            FROM sitters
+            ORDER BY rating DESC, reviews_count DESC
+        """)
+        sitters = [dict(r) for r in cursor.fetchall()]
+
+        for s in sitters:
+            cursor.execute("""
+                SELECT service_type, service_name, price_numeric, rate_unit, last_verified_at
+                FROM sitter_services
+                WHERE sitter_id = ? AND is_active = 1
+                ORDER BY price_numeric ASC
+            """, (s["id"],))
+            s["services"] = [dict(r) for r in cursor.fetchall()]
+
+        return sitters
+
