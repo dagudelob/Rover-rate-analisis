@@ -146,7 +146,7 @@ class RoverScraperStrategy(BaseScraperStrategy):
 
         finally:
             await browser.close()
-            await playwright.__aexit__(None, None, None)
+            await playwright.stop()
 
         emit("log", {"message": f"Scraping complete. Total sitters imported: {len(records)}."})
 

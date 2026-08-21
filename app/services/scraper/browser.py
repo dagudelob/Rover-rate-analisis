@@ -24,9 +24,9 @@ async def create_browser_context(proxy_url: Optional[str] = None) -> tuple:
     Launches a Chromium browser instance with anti-detection flags and
     returns (playwright_instance, browser, context, page).
 
-    The caller is responsible for closing the browser when done.
+    The caller is responsible for calling browser.close() and playwright.stop().
     """
-    playwright = await async_playwright().__aenter__()
+    playwright = await async_playwright().start()
 
     browser: Browser = await playwright.chromium.launch(
         headless=True,

@@ -158,7 +158,7 @@ class CareScraperStrategy(BaseScraperStrategy):
 
         finally:
             await browser.close()
-            await playwright.__aexit__(None, None, None)
+            await playwright.stop()
 
         emit("log", {"message": f"Care.com extraction complete. Total sitters imported: {len(records)}."})
 

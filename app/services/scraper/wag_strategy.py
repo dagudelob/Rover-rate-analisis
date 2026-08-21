@@ -164,7 +164,7 @@ class WagScraperStrategy(BaseScraperStrategy):
 
         finally:
             await browser.close()
-            await playwright.__aexit__(None, None, None)
+            await playwright.stop()
 
         emit("log", {"message": f"Wag! extraction complete. Total caregivers imported: {len(records)}."})
 
