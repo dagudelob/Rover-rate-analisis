@@ -23,6 +23,21 @@
   
   --nav-width-expanded: 240px;
   --nav-width-collapsed: 72px;
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --border-color: rgba(0, 0, 0, 0.09);
+  --border-focus: #2563eb;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --shadow-card: 0 4px 20px 0 rgba(0, 0, 0, 0.06);
 }
 
 * {
@@ -39,10 +54,77 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.10) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.10) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.08) 0px, transparent 50%);
   background-attachment: fixed;
   display: flex;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="light"] body {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.06) 0px, transparent 50%);
+}
+
+[data-theme="light"] .wiki-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-select {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .data-table th {
+  background: #f8fafc;
+  color: #475569;
+}
+
+[data-theme="light"] .data-table tr:hover td {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+[data-theme="light"] .history-item {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .history-item:hover {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .service-rate-calc {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .app-nav-sidebar {
+  background: rgba(255, 255, 255, 0.96);
+  border-right-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .card {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .stat-pill {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .stat-pill-label {
+  color: #64748b;
+}
+
+[data-theme="light"] .stat-pill-value {
+  color: #0f172a;
 }
 
 /* Collapsible Navigation Drawer Sidebar */

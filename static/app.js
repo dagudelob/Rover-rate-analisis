@@ -21,6 +21,7 @@ let activeCoverageCircle = null;
 let sitterMarkersMap = new Map();
 
 document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     setupSidebarNavigation();
     setupCollapsibleTable();
     loadServices();
@@ -29,6 +30,50 @@ document.addEventListener("DOMContentLoaded", () => {
     setupForm();
     setupOutlierToolbar();
 });
+
+// Theme Management (Dark / Light Mode)
+function initTheme() {
+    const savedTheme = localStorage.getItem("rover_theme") || "dark";
+    applyTheme(savedTheme);
+
+    const btnHeader = document.getElementById("themeToggleHeader");
+    const btnSidebar = document.getElementById("themeToggleSidebar");
+
+    if (btnHeader) {
+        btnHeader.addEventListener("click", () => {
+            const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+
+    if (btnSidebar) {
+        btnSidebar.addEventListener("click", () => {
+            const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("rover_theme", theme);
+
+    const iconHeader = document.getElementById("themeIconHeader");
+    const iconSidebar = document.getElementById("themeIconSidebar");
+    const textSidebar = document.getElementById("themeTextSidebar");
+
+    if (theme === "light") {
+        if (iconHeader) iconHeader.textContent = "☀️";
+        if (iconSidebar) iconSidebar.textContent = "☀️";
+        if (textSidebar) textSidebar.textContent = "Dark Mode";
+    } else {
+        if (iconHeader) iconHeader.textContent = "🌙";
+        if (iconSidebar) iconSidebar.textContent = "🌙";
+        if (textSidebar) textSidebar.textContent = "Light Mode";
+    }
+}
 
 // 1. Collapsible Sidebar Navigation and Smooth Scrolling
 function setupSidebarNavigation() {
