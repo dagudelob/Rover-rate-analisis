@@ -1299,8 +1299,37 @@ function renderTable(records) {
                     return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
 
                 case "price":
-                    valA = ra.price_numeric !== null ? ra.price_numeric : 0;
-                    valB = rb.price_numeric !== null ? rb.price_numeric : 0;
+                case "price_walk":
+                    const getP = (record, srvKey) => {
+                        if (record.services && record.services.length > 0) {
+                            const found = record.services.find(s => s.service_type === srvKey);
+                            if (found && found.price_numeric) return found.price_numeric;
+                        }
+                        if (record.service_type === srvKey && record.price_numeric) return record.price_numeric;
+                        return null;
+                    };
+                    valA = getP(ra, "dog-walking") ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    valB = getP(rb, "dog-walking") ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "price_boarding":
+                    valA = (ra.services?.find(s => s.service_type === "overnight-boarding")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    valB = (rb.services?.find(s => s.service_type === "overnight-boarding")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "price_sitting":
+                    valA = (ra.services?.find(s => s.service_type === "house-sitting")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    valB = (rb.services?.find(s => s.service_type === "house-sitting")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "price_dropin":
+                    valA = (ra.services?.find(s => s.service_type === "drop-in-visits")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    valB = (rb.services?.find(s => s.service_type === "drop-in-visits")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "price_daycare":
+                    valA = (ra.services?.find(s => s.service_type === "day-care")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
+                    valB = (rb.services?.find(s => s.service_type === "day-care")?.price_numeric) ?? (currentSortOrder === "asc" ? 999999 : -1);
                     return currentSortOrder === "asc" ? valA - valB : valB - valA;
 
                 case "radius":
@@ -1325,9 +1354,35 @@ function renderTable(records) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 2rem;">No sitters match the selected filter criteria. <button onclick="document.getElementById('btnClearSitterFilters').click();" class="btn-secondary" style="font-size:0.75rem; margin-left:0.5rem;">Reset Filters</button></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding: 2rem;">No sitters match the selected filter criteria. <button onclick="document.getElementById('btnClearSitterFilters').click();" class="btn-secondary" style="font-size:0.75rem; margin-left:0.5rem;">Reset Filters</button></td></tr>`;
         return;
     }
+
+    // Helper to find price of a specific service from services array or fall back to primary
+    const getServicePriceCell = (record, targetServiceType) => {
+        let price = null;
+        let rateUnit = "";
+
+        if (record.services && record.services.length > 0) {
+            const found = record.services.find(s => s.service_type === targetServiceType);
+            if (found && found.price_numeric) {
+                price = found.price_numeric;
+                rateUnit = found.rate_unit || "";
+            }
+        }
+
+        // If not in services array but matches current searched service
+        if (price === null && record.service_type === targetServiceType && record.price_numeric) {
+            price = record.price_numeric;
+            rateUnit = record.rate_unit || "";
+        }
+
+        if (price !== null) {
+            return `<td style="text-align: center;"><span class="badge-price" style="font-weight: 700;">$${Math.round(price)}</span></td>`;
+        } else {
+            return `<td style="text-align: center;"><span style="color: var(--text-muted); font-size: 0.78rem; opacity: 0.55;">N/A</span></td>`;
+        }
+    };
 
     filtered.forEach(item => {
         const r = item.data;
@@ -1338,21 +1393,17 @@ function renderTable(records) {
         const tr = document.createElement("tr");
         if (isExcluded) tr.classList.add("sitter-row-excluded");
 
-        const rateUnitDisplay = r.rate_unit ? `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.25rem;">${escapeHtml(r.rate_unit)}</span>` : '';
-        const priceBadge = r.raw_price ? `<span class="badge-price">${escapeHtml(r.raw_price)}</span>${rateUnitDisplay}` : "--";
         const outlierTag = isAutoOutlier ? `<span class="badge-outlier-tag" title="Flagged by 1.5*IQR Rule">Outlier</span>` : "";
         const ratingBadge = r.rating ? `<span class="badge-rating">★ ${escapeHtml(r.rating)}</span>` : `<span style="color:var(--text-muted); font-size:0.8rem;">New</span>`;
         const profileLink = r.profile_url ? `<a href="${r.profile_url}" target="_blank" style="color:var(--accent-primary); text-decoration:none; font-weight:500;" onclick="event.stopPropagation();">Profile ↗</a>` : "--";
-        const coverageArea = r.neighborhood ? `<span style="color:var(--accent-primary); font-weight:500;">${escapeHtml(r.neighborhood)}</span> (~${r.service_radius_km || 2} km)` : `~${r.service_radius_km || 2} km radius`;
+        const coverageArea = r.neighborhood ? `<span style="color:var(--accent-primary); font-weight:500;">${escapeHtml(r.neighborhood)}</span>` : `~${r.service_radius_km || 2} km`;
 
-        let servicePillsHtml = "";
-        if (r.services && r.services.length > 0) {
-            const pills = r.services.map(srv => {
-                const sName = srv.service_name.replace("Dog ", "").replace("Overnight ", "");
-                return `<span class="badge-price" style="font-size:0.7rem; padding: 0.15rem 0.4rem; background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-primary);" title="${escapeHtml(srv.service_name)}: $${srv.price_numeric} (${escapeHtml(srv.rate_unit)})">${escapeHtml(sName)}: <strong>$${srv.price_numeric}</strong></span>`;
-            }).join(" ");
-            servicePillsHtml = `<div style="display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.35rem;">${pills}</div>`;
-        }
+        // Multi-service cells
+        const cellWalk = getServicePriceCell(r, "dog-walking");
+        const cellBoarding = getServicePriceCell(r, "overnight-boarding");
+        const cellSitting = getServicePriceCell(r, "house-sitting");
+        const cellDropin = getServicePriceCell(r, "drop-in-visits");
+        const cellDaycare = getServicePriceCell(r, "day-care");
 
         tr.innerHTML = `
             <td style="text-align: center;">
@@ -1364,12 +1415,15 @@ function renderTable(records) {
                     ${outlierTag}
                 </div>
                 ${r.headline ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(r.headline)}</div>` : ''}
-                ${servicePillsHtml}
             </td>
-            <td>${priceBadge}</td>
-            <td style="font-size:0.82rem; color:var(--text-secondary);">${coverageArea}</td>
-            <td>${ratingBadge}</td>
-            <td style="color:var(--text-secondary); font-size:0.85rem;">${r.reviews ? escapeHtml(r.reviews) : '0 reviews'}</td>
+            ${cellWalk}
+            ${cellBoarding}
+            ${cellSitting}
+            ${cellDropin}
+            ${cellDaycare}
+            <td style="text-align: center;">${ratingBadge}</td>
+            <td style="text-align: center; color:var(--text-secondary); font-size:0.85rem;">${r.reviews ? escapeHtml(r.reviews) : '0 reviews'}</td>
+            <td style="text-align: center; font-size:0.82rem; color:var(--text-secondary);">${coverageArea}</td>
             <td style="text-align: center;">${profileLink}</td>
         `;
 

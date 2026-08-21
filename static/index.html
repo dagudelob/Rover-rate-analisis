@@ -461,22 +461,32 @@
               <table class="data-table" id="sittersDataTable">
                 <thead>
                   <tr>
-                    <th style="width: 45px; text-align: center;">Active</th>
-                    <th class="sortable-th" data-sort-key="name" style="cursor: pointer; user-select: none;" title="Sort by Sitter Name">
-                      Sitter / Headline <span class="sort-icon" id="sortIcon_name">↕</span>
+                    <th style="width: 40px; text-align: center;">Active</th>
+                    <th class="sortable-th" data-sort-key="name" style="cursor: pointer; user-select: none; min-width: 180px;" title="Sort by Sitter Name">
+                      Sitter / Profile <span class="sort-icon" id="sortIcon_name">↕</span>
                     </th>
-                    <th class="sortable-th" data-sort-key="price" style="cursor: pointer; user-select: none;" title="Sort by Price Rate">
-                      Rate ($) <span class="sort-icon" id="sortIcon_price">↕</span>
+                    <th class="sortable-th" data-sort-key="price_walk" style="cursor: pointer; user-select: none; text-align: center;" title="Dog Walking Rate">
+                      🚶 Walk <span class="sort-icon" id="sortIcon_price_walk">↕</span>
                     </th>
-                    <th class="sortable-th" data-sort-key="radius" style="cursor: pointer; user-select: none;" title="Sort by Service Radius">
-                      Area / Service Radius <span class="sort-icon" id="sortIcon_radius">↕</span>
+                    <th class="sortable-th" data-sort-key="price_boarding" style="cursor: pointer; user-select: none; text-align: center;" title="Overnight Boarding Rate">
+                      🏠 Boarding <span class="sort-icon" id="sortIcon_price_boarding">↕</span>
                     </th>
-                    <th class="sortable-th" data-sort-key="rating" style="cursor: pointer; user-select: none;" title="Sort by Rating">
+                    <th class="sortable-th" data-sort-key="price_sitting" style="cursor: pointer; user-select: none; text-align: center;" title="House Sitting Rate">
+                      🛋️ Sitting <span class="sort-icon" id="sortIcon_price_sitting">↕</span>
+                    </th>
+                    <th class="sortable-th" data-sort-key="price_dropin" style="cursor: pointer; user-select: none; text-align: center;" title="Drop-in Visit Rate">
+                      🐾 Drop-in <span class="sort-icon" id="sortIcon_price_dropin">↕</span>
+                    </th>
+                    <th class="sortable-th" data-sort-key="price_daycare" style="cursor: pointer; user-select: none; text-align: center;" title="Day Care Rate">
+                      ☀️ Day Care <span class="sort-icon" id="sortIcon_price_daycare">↕</span>
+                    </th>
+                    <th class="sortable-th" data-sort-key="rating" style="cursor: pointer; user-select: none; text-align: center;" title="Sort by Rating">
                       Rating <span class="sort-icon" id="sortIcon_rating">↕</span>
                     </th>
-                    <th class="sortable-th" data-sort-key="reviews" style="cursor: pointer; user-select: none;" title="Sort by Number of Reviews">
+                    <th class="sortable-th" data-sort-key="reviews" style="cursor: pointer; user-select: none; text-align: center;" title="Sort by Reviews">
                       Reviews <span class="sort-icon" id="sortIcon_reviews">↕</span>
                     </th>
+                    <th style="text-align: center;">Area</th>
                     <th style="text-align: center;">Link</th>
                   </tr>
                 </thead>
