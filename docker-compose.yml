@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  rover-intel:
+    build: .
+    container_name: rover_market_intelligence
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rover_market.db:/app/rover_market.db
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
