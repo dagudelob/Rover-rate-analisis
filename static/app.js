@@ -1,19 +1,60 @@
-// Chart instances
-let priceChartInstance = null;
-let ratingChartInstance = null;
-let temporalChartInstance = null;
-let revenueChartInstance = null;
+// ==========================================================================
+// Central Reactive State Store (Store Pattern)
+// Eliminates loose global variables and provides single source of truth
+// ==========================================================================
+const AppState = {
+    // Session state
+    sessionId: null,
+    records: [],
+    excludedIndices: new Set(),
+    autoOutliers: [],
+    centerLat: null,
+    centerLng: null,
+    
+    // UI Table & Filter state
+    sortKey: "default",
+    sortOrder: "asc",
+    filterQuery: "",
+    statusFilter: "all",
+    minRating: "all",
+    
+    // History selection state
+    selectedHistorySessionIds: new Set(),
 
-// Active Session state
-let currentSessionId = null;
+    // Reset session
+    resetSession() {
+        this.sessionId = null;
+        this.records = [];
+        this.excludedIndices.clear();
+        this.autoOutliers = [];
+        this.centerLat = null;
+        this.centerLng = null;
+    },
+
+    // Filter helpers
+    resetFilters() {
+        this.filterQuery = "";
+        this.statusFilter = "all";
+        this.minRating = "all";
+        this.sortKey = "default";
+        this.sortOrder = "asc";
+    }
+};
+
+// Legacy compatibility getters for existing handler references
 let currentRecords = [];
-let currentExcludedIndices = new Set();
+let currentExcludedIndices = AppState.excludedIndices;
 let currentAutoOutliers = [];
+let currentSessionId = null;
 let currentCenterLat = null;
 let currentCenterLng = null;
 let activeEventSource = null;
 
-// Leaflet Map & Layer instances
+// Chart & Map runtime instances
+let priceChartInstance = null;
+let ratingChartInstance = null;
+let temporalChartInstance = null;
+let revenueChartInstance = null;
 let mapInstance = null;
 let heatLayerInstance = null;
 let markersLayerGroup = null;
@@ -1026,7 +1067,7 @@ async function loadTemporalTrends() {
     }
 }
 
-// Sitter Table Filter & Sort State
+// Sitter Table Filter & Sort State using AppState Store
 let currentSortKey = "default";
 let currentSortOrder = "asc";
 let currentFilterQuery = "";
@@ -1040,16 +1081,22 @@ function setupSitterTableFilters() {
     const sortSelect = document.getElementById("sitterSortSelect");
     const clearBtn = document.getElementById("btnClearSitterFilters");
 
+    let searchDebounceTimer = null;
     if (searchInput) {
         searchInput.addEventListener("input", (e) => {
-            currentFilterQuery = e.target.value.trim().toLowerCase();
-            renderTable(currentRecords);
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                currentFilterQuery = e.target.value.trim().toLowerCase();
+                AppState.filterQuery = currentFilterQuery;
+                renderTable(currentRecords);
+            }, 120); // 120ms debounce to prevent layout thrashing on every keystroke
         });
     }
 
     if (statusFilter) {
         statusFilter.addEventListener("change", (e) => {
             currentStatusFilter = e.target.value;
+            AppState.statusFilter = currentStatusFilter;
             renderTable(currentRecords);
         });
     }
@@ -1057,6 +1104,7 @@ function setupSitterTableFilters() {
     if (ratingFilter) {
         ratingFilter.addEventListener("change", (e) => {
             currentMinRating = e.target.value;
+            AppState.minRating = currentMinRating;
             renderTable(currentRecords);
         });
     }
