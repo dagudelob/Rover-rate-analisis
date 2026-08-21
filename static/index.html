@@ -17,6 +17,11 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- KaTeX for Beautiful Scientific LaTeX Formula Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
 </head>
 <body>
   <!-- Collapsible Left Navigation Drawer -->
@@ -580,8 +585,8 @@
             <span class="ds-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3);">01</span>
             <h3>IQR Outlier Detection</h3>
           </div>
-          <p class="ds-description">The <strong>Interquartile Range (IQR)</strong> identifies extreme price points that distort your statistical benchmarks. Any price below <em>Q1 - 1.5×IQR</em> or above <em>Q3 + 1.5×IQR</em> is classified as an outlier.</p>
-          <div class="ds-formula">IQR = Q3 - Q1 &nbsp;|&nbsp; Bounds: [Q1 - 1.5·IQR, &nbsp;Q3 + 1.5·IQR]</div>
+          <p class="ds-description">The <strong>Interquartile Range (IQR)</strong> identifies extreme price points that distort your statistical benchmarks. Any price below $Q_1 - 1.5\cdot\text{IQR}$ or above $Q_3 + 1.5\cdot\text{IQR}$ is classified as an outlier.</p>
+          <div class="ds-formula">$$\text{IQR} = Q_3 - Q_1 \quad \Big| \quad \text{Bounds: } \left[ Q_1 - 1.5\cdot\text{IQR}, \; Q_3 + 1.5\cdot\text{IQR} \right]$$</div>
           <div class="ds-demo-area">
             <div style="margin-bottom: 0.75rem;">
               <label class="form-label" style="font-size:0.8rem;">Enter a comma-separated list of prices to analyze:</label>
@@ -601,8 +606,8 @@
             <span class="ds-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3);">02</span>
             <h3>Revenue Maximizer (EVI)</h3>
           </div>
-          <p class="ds-description">The <strong>Expected Value / Revenue Index</strong> finds the price that maximizes: Price × P(Being hired at that price). Higher prices earn more per job but reduce your booking probability.</p>
-          <div class="ds-formula">EVI(P) = P &times; P(hired | P) &nbsp;|&nbsp; P(hired) modeled via logistic curve on market distribution</div>
+          <p class="ds-description">The <strong>Expected Value / Revenue Index</strong> finds the price that maximizes: $\text{EVI}(P) = P \times \mathbb{P}(\text{hired} \mid P)$. Higher prices earn more per job but reduce booking probability.</p>
+          <div class="ds-formula">$$\text{EVI}(P) = P \times \mathbb{P}(\text{hired} \mid P) \quad \Big| \quad \mathbb{P}(\text{hired} \mid P) = \frac{1}{N} \sum_{i=1}^N \frac{1}{1 + e^{(P - P_i)/h}}$$</div>
           <div class="ds-demo-area">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
               <div>
@@ -626,8 +631,8 @@
             <span class="ds-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3);">03</span>
             <h3>Kernel Density Estimation (KDE)</h3>
           </div>
-          <p class="ds-description">KDE estimates the <strong>smooth continuous probability distribution</strong> of market prices — unlike a histogram, it doesn't depend on arbitrary bin widths. It reveals hidden clusters (e.g. "budget" vs. "premium" sitters in the same area).</p>
-          <div class="ds-formula">f̂(x) = (1/n·h) · Σ K((x − xᵢ)/h) &nbsp;|&nbsp; K = Gaussian kernel, h = bandwidth</div>
+          <p class="ds-description">KDE estimates the <strong>smooth continuous probability distribution</strong> of market prices without arbitrary bin intervals. It reveals bimodal density clusters (e.g. budget vs. premium sitters).</p>
+          <div class="ds-formula">$$\hat{f}_h(x) = \frac{1}{nh} \sum_{i=1}^n K\left(\frac{x - x_i}{h}\right) \quad \Big| \quad K(u) = \frac{1}{\sqrt{2\pi}} e^{-\frac{1}{2}u^2}, \; h = 1.06\hat{\sigma}n^{-1/5}$$</div>
           <div class="ds-demo-area">
             <label class="form-label" style="font-size:0.8rem;">Bandwidth (smoothing h):</label>
             <input id="kdeBandwidth" class="form-input" style="font-size:0.85rem; margin-bottom:0.5rem;" value="3" type="number" min="1" max="15">
@@ -645,8 +650,8 @@
             <span class="ds-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3);">04</span>
             <h3>K-Means Price Clustering</h3>
           </div>
-          <p class="ds-description">Groups sitters into <strong>K price clusters</strong> (e.g. Budget / Mid-tier / Premium) using their rates. The algorithm iteratively reassigns each sitter to the nearest centroid, revealing natural market segments in your area.</p>
-          <div class="ds-formula">Minimize: Σᵢ Σⱼ ||xᵢ - μⱼ||² &nbsp;|&nbsp; μⱼ = cluster centroid (mean price)</div>
+          <p class="ds-description">Groups sitters into $K$ natural price clusters (e.g. Budget / Mid-tier / Premium) by iteratively minimizing within-cluster sum of squared distances to centroids.</p>
+          <div class="ds-formula">$$\arg\min_{\mathbf{S}} \sum_{i=1}^k \sum_{\mathbf{x} \in S_i} \|\mathbf{x} - \boldsymbol{\mu}_i\|^2 \quad \Big| \quad \boldsymbol{\mu}_i = \frac{1}{|S_i|}\sum_{\mathbf{x} \in S_i} \mathbf{x}$$</div>
           <div class="ds-demo-area">
             <div style="margin-bottom: 0.75rem;">
               <label class="form-label" style="font-size:0.8rem;">Number of clusters (K):</label>
