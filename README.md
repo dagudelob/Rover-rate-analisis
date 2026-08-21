@@ -3,10 +3,11 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Playwright](https://img.shields.io/badge/Playwright-Stealth-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev)
+[![KaTeX](https://img.shields.io/badge/KaTeX-LaTeX_Math-329894?style=for-the-badge)](https://katex.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com**. This platform extracts multi-page market listings, models the empirical relationship between pricing and booking conversion probability via **Empirical Survival Analysis**, identifies the mathematical **Revenue Sweet Spot** using **Price Elasticity of Demand (PED)**, renders interactive geospatial heatmaps with service radius overlays, and provides statistical outlier management with persistent database storage.
+An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com**. This platform extracts multi-page market listings, models the empirical relationship between pricing and booking conversion probability via **Empirical Survival Analysis**, identifies the mathematical **Revenue Sweet Spot** using **Price Elasticity of Demand (PED)**, renders interactive geospatial heatmaps with service radius overlays, supports statistical outlier management with persistent database storage, and features **KaTeX LaTeX scientific typesetting** alongside a **Dual-Theme (Dark / Light)** UI based on Color Theory.
 
 ---
 
@@ -17,25 +18,35 @@ An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com**.
    - Simulates human behavior with smooth progressive scrolling, realistic navigation headers (`Sec-Fetch`, `Accept-Language`), and stochastic delay intervals.
    - Streams live progress and page-by-page events directly to the UI via **Server-Sent Events (SSE)**.
 
-2. **Empirical Revenue Maximizer & Price Elasticity**:
-   - Solves the classic pricing trade-off: **Low price** (high volume, minimal margin) vs. **High price** (high margin, near-zero conversion).
+2. **Empirical Revenue Maximizer & Price Elasticity (PED)**:
+   - Solves the fundamental market pricing trade-off: **Low price** (high volume, minimal margin) vs. **High price** (high margin, near-zero conversion).
    - Uses the **Empirical Survival Function (ESF)** with Silverman's Gaussian kernel smoothing:
      $$P(\text{conversion} \mid P) = \frac{1}{N} \sum_{i=1}^N \frac{1}{1 + \exp\left(\frac{P - P_i}{h}\right)}$$
-   - Evaluates the **Expected Revenue Index**:
+   - Evaluates the **Expected Value / Revenue Index**:
      $$\text{EVI}(P) = P \times P(\text{conversion} \mid P)$$
-   - Computes **Price Elasticity of Demand (PED)** to locate the unitary elasticity point ($|\epsilon| \approx 1.0$) where revenue is mathematically maximized.
+   - Computes **Price Elasticity of Demand (PED)** to locate the unitary elasticity point ($|\epsilon| \approx 1.0$) where total revenue is mathematically maximized.
 
-3. **Geospatial Price Heatmap & Dynamic Service Buffers**:
+3. **🌓 Dual-Theme Interface (Dark Mode & Light Mode)**:
+   - Built using **Color Theory** tokens to guarantee **WCAG AAA** (7:1+) contrast in both themes.
+   - **Dark Mode (Midnight Blue)**: Deep slate backgrounds (`#0a0e17`, `#111827`) with glowing accents.
+   - **Light Mode (Nordic Slate)**: High-contrast slate typography (`#0f172a`, `#1e293b`) on clean cards.
+   - Preferences automatically persist across sessions using `localStorage`.
+
+4. **📐 KaTeX LaTeX Mathematical Typesetting**:
+   - Scientific formulas across the **Data Science Academy** and **Econometrics Encyclopedia** render using the **KaTeX** LaTeX math engine with crisp mathematical notation ($$IQR$$, $$\text{EVI}(P)$$, $$\hat{f}_h(x)$$, $$\arg\min \sum \|\mathbf{x} - \boldsymbol{\mu}_i\|^2$$).
+
+5. **Geospatial Heatmap & Dynamic Service Area Buffers**:
    - Interactive Leaflet heatmap visualizing localized price density gradients.
-   - Dynamic **hover interaction**: hovering over any sitter row draws their active service radius circle on the map in real-time.
+   - **Dynamic hover interaction**: hovering over any sitter row draws their active service radius coverage circle on the map in real-time.
 
-4. **Statistical Data Studio & Outlier Control**:
-   - Automatic outlier detection using the **Interquartile Range (IQR) Rule** ($Q_1 - 1.5\text{IQR}$ to $Q_3 + 1.5\text{IQR}$).
+6. **Statistical Data Studio & Outlier Control**:
+   - Automatic outlier detection using the **Interquartile Range (IQR) Rule** ($[Q_1 - 1.5\cdot\text{IQR}, \; Q_3 + 1.5\cdot\text{IQR}]$).
    - Individual sitter checkboxes for manual filtering with **SQLite persistence** (`is_excluded`, `excluded_reason`).
    - Live recalculation of **10% Trimmed Mean**, **Standard Deviation ($\sigma$)**, **Variance ($\sigma^2$)**, and percentiles ($P_{10}, P_{25}, P_{75}, P_{90}$).
 
-5. **Historical Archive & Yearly Temporal Variations**:
-   - Tracks market price evolution across dates to detect seasonal shifts.
+7. **Historical Archive & Batch Search Deletion**:
+   - Multi-select checkboxes, "Select All", and "Delete Selected" buttons to manage search history.
+   - Direct trash can (`🗑️`) action for single-click session cleanup.
    - Direct export of SQLite database (`.db`) and consolidated master CSV archive.
 
 ---
@@ -78,6 +89,8 @@ Interactive documentation is available at **`http://localhost:8000/docs`** (Swag
 | `GET` | `/api/services` | Returns supported Rover service types | None | `{"dog-walking": "Dog Walking", ...}` |
 | `GET` | `/api/history` | Lists all historical scraping sessions | None | `{"sessions": [...]}` |
 | `GET` | `/api/history/{session_id}` | Detailed session statistics & listings | `session_id` (path, int) | Complete session object + `full_stats` |
+| `DELETE`| `/api/history/{session_id}`| Deletes a single session and its sitters | `session_id` (path, int) | `{"status": "success", "deleted_session_id": int}` |
+| `DELETE`| `/api/history` | Batch deletes multiple search sessions | `{"session_ids": [int]}` | `{"status": "success", "deleted_count": int}` |
 | `GET` | `/api/scrape/stream` | Multi-page scraping live SSE stream | `location`, `service_type`, `radius_km`, `max_pages`, `max_results` | `text/event-stream` SSE events |
 | `POST` | `/api/analytics/recalculate` | Dynamic stats re-calculation | `{"session_id": int, "excluded_indices": [int], "records": [...]}` | `{"stats": {...}, "auto_outliers": [...]}` |
 | `POST` | `/api/sitters/{sitter_id}/exclude` | Persists sitter exclusion in SQLite | `sitter_id` (path), `{"is_excluded": bool, "reason": str}` | `{"status": "success", "sitter_id": int}` |
@@ -111,6 +124,7 @@ PYTHONPATH=. .venv/bin/pytest tests/ -v
 - **[`tests/test_database.py`](tests/test_database.py)**:
   - `test_database_lifecycle_and_schema`: Verifies table creation, schema integrity, and index existence.
   - `test_save_and_retrieve_session`: Tests full write-read cycle and verifies that sitter exclusion state updates persist correctly in SQLite.
+  - `test_delete_session_and_batch`: Validates single and batch deletion of sessions and cascading sitter listings.
 
 ---
 
@@ -166,8 +180,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ├── requirements.txt      # Python dependencies (FastAPI, Playwright, Pandas, NumPy, etc.)
 ├── static/
 │   ├── index.html        # Interactive Single-Page Dashboard & DS Academy
-│   ├── style.css         # Modern glassmorphism dark theme CSS
-│   └── app.js            # Leaflet map, Chart.js, SSE live stream & interactive demos
+│   ├── style.css         # Dual-theme CSS system with Color Theory & WCAG AAA contrast
+│   └── app.js            # Leaflet map, Chart.js, KaTeX auto-render & batch delete handlers
+├── LICENSE               # MIT License
 └── README.md             # Project documentation and API reference
 ```
 
