@@ -2,18 +2,16 @@
 DOM card data extraction and sitter record parsing.
 
 Responsible for:
-- The JavaScript evaluate() call that extracts raw card data from the page DOM
-- Price extraction with service-specific unit validation (3-tier strategy)
-- Sitter name, headline, rating, and review count parsing
-- Coordinate offset computation for the heatmap
-- Assembling the final typed sitter record dict
-
-No browser lifecycle or HTTP concerns live here — this module only transforms raw data.
+- JavaScript evaluate() call that extracts raw card data, text, badges, neighborhood, and postal code FSA from the DOM
+- Real Price extraction with service-specific unit validation
+- Sitter name, headline, neighborhood/area, postal code FSA, rating, and review count parsing
+- Multi-service rate extraction
 """
 import logging
-import math
 import re
 from typing import Any, Dict, List, Optional
+
+from app.services.scraper.geocoding import extract_postal_code_fsa, geocode_postal_code_with_city
 
 logger = logging.getLogger("rover.services.scraper.parser")
 
@@ -37,8 +35,7 @@ SERVICE_NAMES: Dict[str, str] = {
     "day-care":           "Day Care",
 }
 
-# JavaScript injected into the page to extract raw card data.
-# Kept here (not in browser.py) because it is parsing logic — it defines what fields we want.
+# JavaScript injected into the page to extract raw card data from Rover DOM.
 CARD_EXTRACTOR_JS = """
 () => {
     const results = [];
@@ -71,7 +68,7 @@ CARD_EXTRACTOR_JS = """
             }
         }
 
-        // Find the price badge element — the first element whose text starts with "$N"
+        // Find the price badge element
         let priceText = '';
         const allElements = Array.from(card.querySelectorAll('*'));
         for (const el of allElements) {
@@ -92,11 +89,19 @@ CARD_EXTRACTOR_JS = """
             extractedName = (a.innerText || '').trim();
         }
 
+        // Extract location / postal code / neighborhood elements
+        let neighborhood = '';
+        const locationEl = card.querySelector('[class*="location"], [class*="neighborhood"], [data-testid*="location"], [data-testid*="neighborhood"]');
+        if (locationEl) {
+            neighborhood = (locationEl.innerText || '').trim();
+        }
+
         const img = card.querySelector('img');
         results.push({
             url: cleanUrl,
             extractedName: extractedName,
             priceText: priceText,
+            neighborhood: neighborhood,
             cardText: card.innerText || '',
             photoUrl: img ? (img.getAttribute('src') || '') : ''
         });
@@ -115,12 +120,7 @@ def extract_price(
 ) -> tuple[Optional[float], Optional[str], Optional[str]]:
     """
     3-tier price extraction pipeline with service-unit validation.
-
-    Returns (price_numeric, raw_price, rate_unit) — all may be None if no price found.
-
-    Tier 1: dedicated price badge element text
-    Tier 2: regex scan for "$XX per [unit]" pattern in card text
-    Tier 3: first standalone "$XX" in header lines (bio/review lines are skipped)
+    Returns (price_numeric, raw_price, rate_unit).
     """
     target_tokens = SERVICE_UNIT_EXPECTATIONS.get(service_type, ["walk", "night", "visit", "day"])
     price_numeric: Optional[float] = None
@@ -160,7 +160,7 @@ def extract_price(
             raw_price = f"${first_p}"
             rate_unit = f"per {first_u.lower()}"
 
-    # Tier 3 — standalone "$XX" in first 8 header lines (skips bio and reviews)
+    # Tier 3 — standalone "$XX" in first 8 header lines
     if price_numeric is None:
         lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
         for i, line in enumerate(lines[:8]):
@@ -192,13 +192,10 @@ def extract_price(
 def extract_all_services_and_prices(card_text: str, price_text: str = "") -> List[Dict[str, Any]]:
     """
     Extracts all services and corresponding rates advertised by a sitter.
-    Scans for all 5 Rover service categories and their respective unit rates.
-    Returns a list of dicts: [{"service_type": "...", "service_name": "...", "price_numeric": XX.X, "rate_unit": "..."}]
     """
     extracted_services: List[Dict[str, Any]] = []
     seen_types = set()
 
-    # Pattern mapping for unit detection
     unit_to_service = {
         "walk": ("dog-walking", "Dog Walking", "per walk"),
         "visit": ("drop-in-visits", "Drop-In Visits", "per visit"),
@@ -206,7 +203,6 @@ def extract_all_services_and_prices(card_text: str, price_text: str = "") -> Lis
         "day": ("day-care", "Day Care", "per day"),
     }
 
-    # Scan card for explicit "$XX per [unit]" declarations
     all_matches = re.findall(
         r"\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)(walk|night|visit|day)",
         card_text,
@@ -225,7 +221,6 @@ def extract_all_services_and_prices(card_text: str, price_text: str = "") -> Lis
                     "rate_unit": rate_unit,
                 })
 
-    # If badge price exists but not captured in card regex, assign to default service
     if price_text:
         pm = re.search(r"\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)?(walk|night|visit|day)?", price_text, re.IGNORECASE)
         if pm:
@@ -244,15 +239,14 @@ def extract_all_services_and_prices(card_text: str, price_text: str = "") -> Lis
     return extracted_services
 
 
-# ── Name / Headline / Rating Parsing ──────────────────────────────────────────
+# ── Name / Headline / Postal Code / Neighborhood Parsing ───────────────────────
 
 def parse_sitter_name_and_headline(
     extracted_name: str, card_text: str, profile_url: str
-) -> tuple[str, Optional[str]]:
+) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
     """
-    Cleans the sitter name (strips numbering and badge text) and extracts
-    the headline from the card text.
-    Returns (name, headline).
+    Cleans the sitter name, extracts the headline, and detects real postal code FSA (e.g. M5V) and neighborhood.
+    Returns (name, headline, neighborhood, postal_code).
     """
     name = extracted_name
     if name:
@@ -263,6 +257,9 @@ def parse_sitter_name_and_headline(
 
     lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
     headline: Optional[str] = None
+    neighborhood: Optional[str] = None
+    postal_code: Optional[str] = extract_postal_code_fsa(card_text)
+
     skip_terms = {
         "view all", "photo", "total", "per walk", "per night",
         "highly responsive", "repeat clients", "out of 5 stars", "$",
@@ -278,19 +275,20 @@ def parse_sitter_name_and_headline(
             ).strip()
         elif not headline and len(line) > 5 and not line.startswith("★") and not line.startswith("•"):
             headline = line
-            break
+        elif not neighborhood and ("," in line or "in " in line.lower() or "area" in line.lower() or "near" in line.lower()):
+            if len(line) < 40 and not line.startswith("$"):
+                neighborhood = line
 
     if not name and profile_url:
         slug = profile_url.split("/members/")[-1].strip("/")
         name = " ".join(word.capitalize() for word in slug.split("-")[:2])
 
-    return name or "Rover Sitter", headline
+    return name or "Rover Sitter", headline, neighborhood, postal_code
 
 
 def parse_rating_and_reviews(card_text: str) -> tuple[Optional[str], Optional[float], Optional[str], int]:
     """
     Extracts rating, rating_numeric, reviews text, and reviews_count from card text.
-    Returns (rating, rating_numeric, reviews, reviews_count).
     """
     rating: Optional[str] = None
     rating_numeric: Optional[float] = None
@@ -312,67 +310,50 @@ def parse_rating_and_reviews(card_text: str) -> tuple[Optional[str], Optional[fl
     return rating, rating_numeric, reviews, reviews_count
 
 
-# ── Coordinate Computation ─────────────────────────────────────────────────────
-
-def compute_sitter_coordinates(
-    total_idx: int,
-    center_lat: float,
-    center_lng: float,
-    radius_km: Optional[float],
-) -> tuple[float, float, float]:
-    """
-    Approximates sitter coordinates using a golden-spiral offset within the search radius.
-    Returns (lat, lng, service_radius_km).
-
-    Note: these are approximate display coordinates for the heatmap, not real sitter addresses.
-    """
-    max_offset_km = radius_km if radius_km else 4.0
-    angle = (total_idx * 137.5077) % 360
-    dist_km = 0.25 + (total_idx % 15) * (max_offset_km / 15.0)
-
-    d_lat = (dist_km / 111.0) * math.cos(math.radians(angle))
-    d_lng = (dist_km / (111.0 * math.cos(math.radians(center_lat)))) * math.sin(math.radians(angle))
-
-    lat = round(center_lat + d_lat, 6)
-    lng = round(center_lng + d_lng, 6)
-    service_radius_km = round(1.2 + (total_idx % 5) * 0.7, 1)
-
-    return lat, lng, service_radius_km
-
-
-# ── Record Assembly ────────────────────────────────────────────────────────────
+# ── Record Assembly with Real Postal Code Geocoding ─────────────────────────────
 
 def build_sitter_record(
     card: Dict[str, Any],
     service_type: str,
     location: str,
-    radius_km: Optional[float],
-    center_lat: float,
-    center_lng: float,
-    total_idx: int,
+    radius_km: Optional[float] = None,
+    total_idx: int = 0,
+    center_lat: Optional[float] = None,
+    center_lng: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Parses a raw card dict (from CARD_EXTRACTOR_JS) into a typed sitter record.
-    Returns None if no price could be extracted (record is discarded).
+    Parses a raw card dict into a typed sitter record with real FSA postal code geocoding.
     """
     profile_url = card["url"]
     card_text = card["cardText"]
     price_text = card.get("priceText", "")
     photo_url = card.get("photoUrl")
     extracted_name = card.get("extractedName", "")
+    card_neighborhood = card.get("neighborhood", "")
 
     price_numeric, raw_price, rate_unit = extract_price(price_text, card_text, service_type)
     if price_numeric is None:
         return None
 
-    name, headline = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
+    name, headline, parsed_neighborhood, postal_code = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
+    neighborhood = card_neighborhood or parsed_neighborhood or location
+
+    # Geocode real postal code FSA centroid (e.g. "M5V, Toronto, ON")
+    lat, lng = None, None
+    if postal_code:
+        coords = geocode_postal_code_with_city(postal_code, location)
+        if coords:
+            lat, lng = coords
+
+    if lat is None or lng is None:
+        lat, lng = center_lat, center_lng
+
     rating, rating_numeric, reviews, reviews_count = parse_rating_and_reviews(card_text)
-    lat, lng, service_radius_km = compute_sitter_coordinates(total_idx, center_lat, center_lng, radius_km)
     all_services = extract_all_services_and_prices(card_text, price_text)
 
-    # Ensure the primary requested service is present in the services catalog
-    has_primary = any(s["service_type"] == service_type for s in all_services)
-    if not has_primary and price_numeric is not None:
+    # Ensure current queried service is registered
+    has_current = any(s["service_type"] == service_type for s in all_services)
+    if not has_current and price_numeric is not None and service_type != "all-services":
         all_services.append({
             "service_type": service_type,
             "service_name": SERVICE_NAMES.get(service_type, service_type.title()),
@@ -390,14 +371,14 @@ def build_sitter_record(
         "reviews": reviews,
         "reviews_count": reviews_count,
         "headline": headline,
-        "neighborhood": location,
+        "neighborhood": neighborhood,
+        "postal_code": postal_code,
+        "lat": lat,
+        "lng": lng,
         "profile_url": profile_url,
         "photo_url": photo_url,
         "service_type": service_type,
         "location_query": location,
         "radius_km": radius_km,
-        "lat": lat,
-        "lng": lng,
-        "service_radius_km": service_radius_km,
         "services": all_services,
     }

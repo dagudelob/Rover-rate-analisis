@@ -66,4 +66,5 @@ def test_export_master_csv(client):
     response = client.get("/api/export/master-csv")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
-    assert "Session_ID" in response.text
+    assert "Sitter_ID" in response.text
+    assert "Member_ID" in response.text

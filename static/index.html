@@ -3,22 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rover Market Intelligence | Multi-Page Scraper & Price Optimizer</title>
+  <title>Rover Market Intelligence | Multi-Service Analytics & Price Optimizer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS & JS for Real Heatmap & Clustering -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-
-  <link rel="stylesheet" href="/static/style.css">
-  
-  <!-- Leaflet & Heatmap Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- KaTeX for Beautiful Scientific LaTeX Formula Rendering -->
+  <!-- KaTeX for Scientific Formula Rendering -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
@@ -57,15 +55,15 @@
             </a>
           </li>
           <li>
-            <a href="#section-heatmap" class="nav-link">
+            <a href="#section-heatmap" class="nav-link" style="color: #10b981;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-              <span class="nav-text">Price Heatmap</span>
+              <span class="nav-text">FSA Postal Heatmap</span>
             </a>
           </li>
           <li>
             <a href="#section-analytics" class="nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-              <span class="nav-text">Market Charts</span>
+              <span class="nav-text">Statistical Charts</span>
             </a>
           </li>
           <li>
@@ -92,18 +90,6 @@
               <span class="nav-text">Historical Archive</span>
             </a>
           </li>
-          <li>
-            <a href="#section-dsacademy" class="nav-link" style="color: #a78bfa;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-              <span class="nav-text">DS Academy</span>
-            </a>
-          </li>
-          <li>
-            <a href="#section-glossary" class="nav-link" style="color: #34d399;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-              <span class="nav-text">Data Science Wiki</span>
-            </a>
-          </li>
         </ul>
       </nav>
     </div>
@@ -120,13 +106,13 @@
     </div>
   </aside>
 
-  <!-- Main Single Page Content -->
+  <!-- Main Layout Content -->
   <div class="app-main-layout">
     <!-- Header -->
     <header class="app-header">
       <div class="logo-text">
         <h1>Rover Market Intelligence Platform</h1>
-        <p>100+ Sitters multi-page scraping, revenue price optimization & geospatial intelligence</p>
+        <p>100% Real multi-service scraping, individual 5-service pricing optimizers & FSA postal heatmaps</p>
       </div>
       <div class="export-btn-group" style="display: flex; align-items: center; gap: 0.6rem;">
         <button id="themeToggleHeader" class="btn-secondary" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" title="Toggle Dark/Light Mode">
@@ -148,7 +134,7 @@
       <div class="section-header">
         <h2>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          Search & Extraction Control (100 Sitters)
+          Search & Multi-Service Extraction Control
         </h2>
       </div>
 
@@ -172,7 +158,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label" for="locationInput">Center Location / Postal Code</label>
+              <label class="form-label" for="locationInput">Center Location / City / Postal Code</label>
               <input type="text" id="locationInput" class="form-input" placeholder="e.g. Downtown Toronto, ON" value="Downtown Toronto, ON" required>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
@@ -181,7 +167,7 @@
                 <input type="number" id="radiusInput" class="form-input" placeholder="e.g. 5 (leave blank for all)" min="0.5" max="100" step="0.5">
               </div>
               <div class="form-group">
-                <label class="form-label" for="maxPagesInput">Pages to Scrape (5 for ~100)</label>
+                <label class="form-label" for="maxPagesInput">Pages per Service</label>
                 <input type="number" id="maxPagesInput" class="form-input" min="1" max="15" value="5">
               </div>
             </div>
@@ -195,7 +181,7 @@
             </div>
             <button type="submit" id="startBtn" class="btn-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              Start 100-Sitter Import
+              Start Real Market Extraction
             </button>
           </form>
 
@@ -208,7 +194,7 @@
         <div class="card">
           <h3 class="card-title">Live Extraction Console (SSE)</h3>
           <div id="terminal" class="terminal-card">
-            <div class="terminal-line info">[System] Ready to extract up to 100 sitters...</div>
+            <div class="terminal-line info">[System] Ready to extract real pet sitters data...</div>
           </div>
         </div>
       </div>
@@ -216,6 +202,23 @@
 
     <!-- ACTIVE RESULTS CONTAINER -->
     <div id="resultsContainer" style="display: none;">
+
+      <!-- DEDICATED SERVICE ANALYTICS SWITCHER TABS -->
+      <div class="service-tabs-container" style="margin-bottom: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-heading); margin-right: 0.5rem;">📊 Service Focus:</span>
+          <button class="service-tab-btn active" data-service-tab="all">🌐 Master Summary</button>
+          <button class="service-tab-btn" data-service-tab="dog-walking">🦮 Dog Walking</button>
+          <button class="service-tab-btn" data-service-tab="overnight-boarding">🏠 Overnight Boarding</button>
+          <button class="service-tab-btn" data-service-tab="house-sitting">🛋️ House Sitting</button>
+          <button class="service-tab-btn" data-service-tab="drop-in-visits">🐾 Drop-In Visits</button>
+          <button class="service-tab-btn" data-service-tab="day-care">☀️ Day Care</button>
+        </div>
+        <span id="activeServiceBadge" style="font-size: 0.8rem; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">
+          Viewing: Master Summary
+        </span>
+      </div>
+
       <!-- KPI Overview Cards -->
       <div class="metrics-row">
         <div class="metric-card">
@@ -256,7 +259,7 @@
           <div class="section-header">
             <h2>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-              Optimal Price & Revenue Maximizer
+              Optimal Price & Revenue Maximizer (<span id="optimizerServiceName">Selected Service</span>)
             </h2>
             <span style="font-size: 0.82rem; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid rgba(59, 130, 246, 0.3);">
               Revenue Potential = Price &times; Conversion Probability
@@ -275,7 +278,7 @@
               </div>
 
               <div style="font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                🎯 <strong>Maximization Strategy:</strong> Setting your rate in this bracket maximizes total expected income: low enough to maintain high hiring conversion (>60%) while capturing maximum profit per client.
+                🎯 <strong>Maximization Strategy:</strong> <span id="optimizerStrategyText">Setting your rate in this bracket balances hiring conversion with maximum yield per booking.</span>
               </div>
             </div>
 
@@ -292,13 +295,13 @@
         </div>
       </section>
 
-      <!-- SECTION 2: INTERACTIVE GEOSPATIAL HEATMAP -->
+      <!-- SECTION 2: REAL FSA POSTAL CODE HEATMAP -->
       <section id="section-heatmap" class="content-section">
         <div class="card map-card">
           <div class="map-header-tools">
             <h3 class="card-title" style="margin-bottom: 0;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-              Geospatial Price Density Heatmap
+              Real Postal Code (FSA) Geospatial Heatmap & Clusters
             </h3>
             <div class="map-legend">
               <span>Lower Rates</span>
@@ -306,35 +309,64 @@
               <span>Higher Rates</span>
             </div>
           </div>
-          <div id="mapContainer"></div>
+          <div id="mapContainer" style="height: 380px; width: 100%; border-radius: var(--radius-md); margin-top: 0.75rem;"></div>
         </div>
       </section>
 
-      <!-- SECTION 3: MARKET CHARTS & DISPERSION -->
+      <!-- SECTION 3: STATISTICAL INTELLIGENCE CHARTS (5 CHARTS) -->
       <section id="section-analytics" class="content-section">
         <div class="section-header">
           <h2>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-            Market Analytics & Distributions
+            Statistical Analysis Studio (<span id="chartsServiceName">Selected Service</span>)
           </h2>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Real-world market distributions, cumulative density & cross-service benchmarks</span>
         </div>
-        <div class="charts-grid">
+
+        <div class="charts-grid" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.25rem;">
+          <!-- Chart 1: Rate Histogram -->
           <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">Rate Distribution Histogram</h3>
-            <div class="chart-wrapper">
+            <h3 class="card-title">📊 Rate Distribution Histogram</h3>
+            <div class="chart-wrapper" style="height: 250px;">
               <canvas id="priceDistributionChart"></canvas>
             </div>
           </div>
+
+          <!-- Chart 2: Empirical Cumulative Distribution Function (CDF) -->
           <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">Rate vs. Review Count Correlation</h3>
-            <div class="chart-wrapper">
+            <h3 class="card-title">📈 Cumulative Price Probability (CDF / Percentiles)</h3>
+            <div class="chart-wrapper" style="height: 250px;">
+              <canvas id="cdfChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Reviews vs Price Correlation -->
+          <div class="card" style="margin-bottom: 0;">
+            <h3 class="card-title">⭐ Price vs. Review Count (Experience Premium)</h3>
+            <div class="chart-wrapper" style="height: 250px;">
               <canvas id="ratingScatterChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 4: Cross-Service Price Comparison -->
+          <div class="card" style="margin-bottom: 0;">
+            <h3 class="card-title">🏷️ Cross-Service Real Rate Comparison</h3>
+            <div class="chart-wrapper" style="height: 250px;">
+              <canvas id="serviceComparisonChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 5: Top Neighborhoods Rate Comparison -->
+          <div class="card" style="grid-column: 1 / -1; margin-bottom: 0;">
+            <h3 class="card-title">📍 Neighborhood / Area Rate Comparison</h3>
+            <div class="chart-wrapper" style="height: 250px;">
+              <canvas id="neighborhoodChart"></canvas>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SECTION 4: OUTLIER STUDIO & STATISTICAL MANIPULATION -->
+      <!-- SECTION 4: OUTLIER STUDIO -->
       <section id="section-datastudio" class="content-section">
         <div class="card">
           <div class="section-header">
@@ -389,7 +421,7 @@
         </div>
       </section>
 
-      <!-- SECTION 5: SITTER LISTINGS TABLE WITH FILTERING & SORTING -->
+      <!-- SECTION 5: SITTER LISTINGS TABLE -->
       <section id="section-sitters" class="content-section">
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
@@ -411,7 +443,7 @@
           <div class="sitter-filter-toolbar" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.9rem 1.1rem; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: 1.25rem;">
             <!-- Live Text Search -->
             <div style="flex: 1; min-width: 200px; position: relative;">
-              <input id="sitterSearchInput" type="text" class="form-input" placeholder="🔍 Search by name, bio, area..." style="font-size: 0.85rem; padding: 0.45rem 0.75rem 0.45rem 2rem;">
+              <input id="sitterSearchInput" type="text" class="form-input" placeholder="🔍 Search by name, bio, postal code, neighborhood..." style="font-size: 0.85rem; padding: 0.45rem 0.75rem 0.45rem 2rem;">
               <span style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--text-muted); pointer-events: none;">🔍</span>
             </div>
 
@@ -440,13 +472,14 @@
             <div style="min-width: 170px;">
               <select id="sitterSortSelect" class="form-select" style="font-size: 0.82rem; padding: 0.45rem 0.75rem;">
                 <option value="default">Sort: Default</option>
-                <option value="price_asc">Price: Low to High ↑</option>
-                <option value="price_desc">Price: High to Low ↓</option>
+                <option value="price_walk_asc">Walk: Low to High ↑</option>
+                <option value="price_walk_desc">Walk: High to Low ↓</option>
+                <option value="price_boarding_asc">Boarding: Low to High ↑</option>
+                <option value="price_boarding_desc">Boarding: High to Low ↓</option>
                 <option value="rating_desc">Rating: Highest First ↓</option>
                 <option value="reviews_desc">Reviews: Most First ↓</option>
                 <option value="name_asc">Name: A to Z ↑</option>
-                <option value="name_desc">Name: Z to A ↓</option>
-                <option value="radius_asc">Radius: Closest First ↑</option>
+                <option value="postal_code_asc">Postal Code: A to Z ↑</option>
               </select>
             </div>
 
@@ -464,6 +497,9 @@
                     <th style="width: 40px; text-align: center;">Active</th>
                     <th class="sortable-th" data-sort-key="name" style="cursor: pointer; user-select: none; min-width: 180px;" title="Sort by Sitter Name">
                       Sitter / Profile <span class="sort-icon" id="sortIcon_name">↕</span>
+                    </th>
+                    <th class="sortable-th" data-sort-key="postal_code" style="cursor: pointer; user-select: none; text-align: center;" title="Postal Code FSA / Area">
+                      📮 Postal / Area <span class="sort-icon" id="sortIcon_postal_code">↕</span>
                     </th>
                     <th class="sortable-th" data-sort-key="price_walk" style="cursor: pointer; user-select: none; text-align: center;" title="Dog Walking Rate">
                       🚶 Walk <span class="sort-icon" id="sortIcon_price_walk">↕</span>
@@ -486,7 +522,6 @@
                     <th class="sortable-th" data-sort-key="reviews" style="cursor: pointer; user-select: none; text-align: center;" title="Sort by Reviews">
                       Reviews <span class="sort-icon" id="sortIcon_reviews">↕</span>
                     </th>
-                    <th style="text-align: center;">Area</th>
                     <th style="text-align: center;">Link</th>
                   </tr>
                 </thead>
@@ -497,18 +532,17 @@
         </div>
       </section>
 
-      <!-- SECTION 5.5: 5-SERVICE STRATEGIC PRICING MATRIX -->
+      <!-- SECTION 6: 5-SERVICE PRICING MATRIX -->
       <section id="section-services" class="content-section">
         <div class="section-header">
           <h2>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
             5-Service Pricing Strategy & Margin Multipliers
           </h2>
-          <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics & elasticity benchmarks</span>
+          <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics</span>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-          <!-- Service 1: Dog Walking -->
           <div class="card service-strategy-card">
             <div class="service-strategy-header">
               <div class="service-strategy-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">🦮</div>
@@ -517,17 +551,13 @@
                 <span class="service-multiplier-tag" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Base Anchor (1.0×)</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> 30 or 60 min walk &bull; <strong>Elasticity:</strong> High ($|\epsilon| > 1.2$)</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per walk &bull; <strong>Elasticity:</strong> High</p>
             <div class="service-rate-calc">
               <span>Benchmark Rate:</span>
-              <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$20 - $30</strong>
-            </div>
-            <div class="service-tactics">
-              <p>🎯 <strong>Strategy:</strong> Volume & Route Density. Keep base price competitive with market median, and cluster walks geographically in a 1.5km zone to minimize unpaid commute transit.</p>
+              <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$--</strong>
             </div>
           </div>
 
-          <!-- Service 2: Drop-In Visits -->
           <div class="card service-strategy-card">
             <div class="service-strategy-header">
               <div class="service-strategy-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">🏠</div>
@@ -536,17 +566,13 @@
                 <span class="service-multiplier-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.3);">0.9× – 1.1× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min home check-in &bull; <strong>Elasticity:</strong> Moderate ($|\epsilon| \approx 1.0$)</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min check-in &bull; <strong>Elasticity:</strong> Moderate</p>
             <div class="service-rate-calc">
               <span>Benchmark Rate:</span>
-              <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$18 - $28</strong>
-            </div>
-            <div class="service-tactics">
-              <p>🎯 <strong>Strategy:</strong> Multi-Pet Upsell. Base rate matches walking, but add-on pets (+$10-15/cat or extra dog) drive 80%+ profit margins with near-zero additional travel overhead.</p>
+              <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$--</strong>
             </div>
           </div>
 
-          <!-- Service 3: Overnight Boarding -->
           <div class="card service-strategy-card">
             <div class="service-strategy-header">
               <div class="service-strategy-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">🏡</div>
@@ -555,17 +581,13 @@
                 <span class="service-multiplier-tag" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">1.8× – 2.5× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (in your home) &bull; <strong>Elasticity:</strong> Low ($|\epsilon| < 0.8$)</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night &bull; <strong>Elasticity:</strong> Inelastic</p>
             <div class="service-rate-calc">
               <span>Benchmark Rate:</span>
-              <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$45 - $75</strong>
-            </div>
-            <div class="service-tactics">
-              <p>🎯 <strong>Strategy:</strong> Capacity Monetization. Boarding is limited by home capacity (1-2 pets). Price high with premium trust signaling and enforce a +35% holiday surge multiplier.</p>
+              <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$--</strong>
             </div>
           </div>
 
-          <!-- Service 4: House Sitting -->
           <div class="card service-strategy-card">
             <div class="service-strategy-header">
               <div class="service-strategy-icon" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🛋️</div>
@@ -574,17 +596,13 @@
                 <span class="service-multiplier-tag" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);">2.2× – 3.2× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (in owner's home) &bull; <strong>Elasticity:</strong> Very Inelastic ($|\epsilon| < 0.6$)</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (owner home) &bull; <strong>Elasticity:</strong> Highly Inelastic</p>
             <div class="service-rate-calc">
               <span>Benchmark Rate:</span>
-              <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$60 - $100+</strong>
-            </div>
-            <div class="service-tactics">
-              <p>🎯 <strong>Strategy:</strong> Time Exclusivity Premium. Because you cannot take overlapping house sits, charge top-dollar. Ideal for digital nomads and remote professionals who work from the client's home.</p>
+              <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$--</strong>
             </div>
           </div>
 
-          <!-- Service 5: Day Care -->
           <div class="card service-strategy-card">
             <div class="service-strategy-header">
               <div class="service-strategy-icon" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">☀️</div>
@@ -593,235 +611,59 @@
                 <span class="service-multiplier-tag" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">1.4× – 1.9× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Full Day (8am - 6pm) &bull; <strong>Elasticity:</strong> Moderate ($|\epsilon| \approx 1.0$)</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Full Day &bull; <strong>Elasticity:</strong> Moderate</p>
             <div class="service-rate-calc">
               <span>Benchmark Rate:</span>
-              <strong id="serviceRateDayCare" style="color: #c084fc; font-size: 1.1rem;">$32 - $50</strong>
-            </div>
-            <div class="service-tactics">
-              <p>🎯 <strong>Strategy:</strong> Recurring Retention. Offer 5-day / month-long pass bundles. Predictable recurring cashflow offsets the slight per-day discount vs. one-off drop-ins.</p>
+              <strong id="serviceRateDayCare" style="color: #c084fc; font-size: 1.1rem;">$--</strong>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <!-- SECTION 6: HISTORICAL ARCHIVE & TEMPORAL VARIATION TRACKING -->
-    <section id="section-database" class="content-section">
-      <div class="section-header">
-        <h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-          Historical Database & Yearly Temporal Variations
-        </h2>
-      </div>
-
-      <div class="dashboard-grid">
-        <!-- Temporal Trend Chart -->
-        <div class="card" style="grid-column: span 2;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 class="card-title" style="margin-bottom: 0;">Market Rate Evolution Across Time</h3>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Compare seasonal price shifts between search sessions</span>
+    <!-- SECTION 7: HISTORICAL SEARCH DATABASE -->
+    <section id="section-database" class="content-section" style="margin-top: 2rem;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h3 class="card-title" style="margin-bottom: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+              Historical Search Database & Temporal Trends
+            </h3>
+            <span id="historySessionsBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sessions</span>
           </div>
-          <div class="chart-wrapper" style="height: 280px;">
-            <canvas id="temporalTrendsChart"></canvas>
-          </div>
+          <button id="btnToggleHistorySection" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span id="historyToggleText">Collapse Section</span>
+            <svg id="historyToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
         </div>
 
-        <!-- Saved Search History List -->
-        <div class="card" style="grid-column: span 2;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <h3 class="card-title" style="margin-bottom: 0;">Saved Search Sessions</h3>
-              <span id="historySessionsBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sessions</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              <button id="btnToggleHistorySection" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.75rem; display: inline-flex; align-items: center; gap: 0.4rem;" title="Collapse/Expand History Sessions">
-                <span id="historyToggleText">Collapse Section</span>
-                <svg id="historyToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.25s ease;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-              <button id="btnSelectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Select All</button>
-              <button id="btnDeselectAllHistory" class="btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.65rem;">Deselect</button>
-              <button id="btnDeleteSelectedSessions" class="btn-danger" style="display: none; font-size: 0.78rem; padding: 0.3rem 0.75rem; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
-                🗑️ Delete Selected (<span id="deleteCountBadge">0</span>)
-              </button>
-            </div>
-          </div>
-          <div id="historyCollapsibleWrapper" class="collapsible-table-wrapper">
-            <div id="historyList"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 7: DATA SCIENCE ACADEMY -->
-    <section id="section-dsacademy" class="content-section">
-      <div class="section-header">
-        <h2>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-          Data Science Academy
-        </h2>
-        <span style="font-size: 0.82rem; color: #c4b5fd; background: rgba(139, 92, 246, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(139, 92, 246, 0.3);">Interactive examples of the techniques used in this platform</span>
-      </div>
-
-      <!-- Technique Cards Grid -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-
-        <!-- Technique 1: IQR Outlier Detection -->
-        <div class="card ds-technique-card" id="ds-iqr">
-          <div class="ds-technique-header">
-            <span class="ds-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3);">01</span>
-            <h3>IQR Outlier Detection</h3>
-          </div>
-          <p class="ds-description">The <strong>Interquartile Range (IQR)</strong> identifies extreme price points that distort your statistical benchmarks. Any price below $Q_1 - 1.5\cdot\text{IQR}$ or above $Q_3 + 1.5\cdot\text{IQR}$ is classified as an outlier.</p>
-          <div class="ds-formula">$$\text{IQR} = Q_3 - Q_1 \quad \Big| \quad \text{Bounds: } \left[ Q_1 - 1.5\cdot\text{IQR}, \; Q_3 + 1.5\cdot\text{IQR} \right]$$</div>
-          <div class="ds-demo-area">
-            <div style="margin-bottom: 0.75rem;">
-              <label class="form-label" style="font-size:0.8rem;">Enter a comma-separated list of prices to analyze:</label>
-              <div style="display:flex; gap:0.5rem;">
-                <input id="iqrInput" class="form-input" style="font-size:0.85rem;" value="12, 15, 15, 18, 20, 22, 23, 25, 28, 55, 8" placeholder="e.g. 12, 15, 22, 55...">
-                <button onclick="runIQRDemo()" class="btn-filter-tag" style="white-space:nowrap;">▶ Run</button>
+        <div id="historyCollapsibleWrapper" class="collapsible-table-wrapper">
+          <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 1.5rem; align-items: start;">
+            <!-- History List Column -->
+            <div>
+              <div id="historyDeleteToolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+                  <input type="checkbox" id="historySelectAllCheckbox" style="cursor: pointer;">
+                  Select All Sessions
+                </label>
+                <button id="btnBatchDeleteHistory" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.78rem; padding: 0.3rem 0.6rem; display: none;" title="Delete selected sessions">
+                  🗑️ Delete Selected (<span id="historySelectedCount">0</span>)
+                </button>
+              </div>
+              <div id="historyList" class="history-list" style="max-height: 280px; overflow-y: auto;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem;">Loading search archive...</p>
               </div>
             </div>
-            <div id="iqrResult" class="ds-result"></div>
-          </div>
-          <div class="ds-use-case">📌 Used in this app to auto-flag sitters with abnormal rates in the Outlier Studio.</div>
-        </div>
 
-        <!-- Technique 2: Revenue Maximizer (Expected Value Optimization) -->
-        <div class="card ds-technique-card" id="ds-evi">
-          <div class="ds-technique-header">
-            <span class="ds-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3);">02</span>
-            <h3>Revenue Maximizer (EVI)</h3>
-          </div>
-          <p class="ds-description">The <strong>Expected Value / Revenue Index</strong> finds the price that maximizes: $\text{EVI}(P) = P \times \mathbb{P}(\text{hired} \mid P)$. Higher prices earn more per job but reduce booking probability.</p>
-          <div class="ds-formula">$$\text{EVI}(P) = P \times \mathbb{P}(\text{hired} \mid P) \quad \Big| \quad \mathbb{P}(\text{hired} \mid P) = \frac{1}{N} \sum_{i=1}^N \frac{1}{1 + e^{(P - P_i)/h}}$$</div>
-          <div class="ds-demo-area">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
-              <div>
-                <label class="form-label" style="font-size:0.8rem;">Market Mean Price ($)</label>
-                <input id="eviMean" class="form-input" style="font-size:0.85rem;" value="22" type="number">
-              </div>
-              <div>
-                <label class="form-label" style="font-size:0.8rem;">Market Std Dev ($)</label>
-                <input id="eviStd" class="form-input" style="font-size:0.85rem;" value="7" type="number">
+            <!-- Temporal Trends Chart Column -->
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem;">Longitudinal Price Trends Across Sessions</h4>
+              <div class="chart-wrapper" style="height: 240px;">
+                <canvas id="temporalTrendsChart"></canvas>
               </div>
             </div>
-            <button onclick="runEVIDemo()" class="btn-filter-tag" style="width:100%; justify-content:center;">▶ Compute Optimal Price</button>
-            <div id="eviResult" class="ds-result" style="margin-top:0.6rem;"></div>
           </div>
-          <div class="ds-use-case">📌 Used in this app to compute the recommended pricing sweet spot in the Price Optimizer section.</div>
-        </div>
-
-        <!-- Technique 3: Kernel Density Estimation (KDE) -->
-        <div class="card ds-technique-card" id="ds-kde">
-          <div class="ds-technique-header">
-            <span class="ds-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3);">03</span>
-            <h3>Kernel Density Estimation (KDE)</h3>
-          </div>
-          <p class="ds-description">KDE estimates the <strong>smooth continuous probability distribution</strong> of market prices without arbitrary bin intervals. It reveals bimodal density clusters (e.g. budget vs. premium sitters).</p>
-          <div class="ds-formula">$$\hat{f}_h(x) = \frac{1}{nh} \sum_{i=1}^n K\left(\frac{x - x_i}{h}\right) \quad \Big| \quad K(u) = \frac{1}{\sqrt{2\pi}} e^{-\frac{1}{2}u^2}, \; h = 1.06\hat{\sigma}n^{-1/5}$$</div>
-          <div class="ds-demo-area">
-            <label class="form-label" style="font-size:0.8rem;">Bandwidth (smoothing h):</label>
-            <input id="kdeBandwidth" class="form-input" style="font-size:0.85rem; margin-bottom:0.5rem;" value="3" type="number" min="1" max="15">
-            <button onclick="runKDEDemo()" class="btn-filter-tag" style="width:100%; justify-content:center; margin-bottom:0.75rem;">▶ Plot KDE on Current Data</button>
-            <div class="chart-wrapper" style="height:160px;">
-              <canvas id="kdeChart"></canvas>
-            </div>
-          </div>
-          <div class="ds-use-case">📌 Extension: Replace the histogram in Market Charts with a KDE curve for smoother density visualization.</div>
-        </div>
-
-        <!-- Technique 4: K-Means Geospatial Clustering -->
-        <div class="card ds-technique-card" id="ds-kmeans">
-          <div class="ds-technique-header">
-            <span class="ds-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3);">04</span>
-            <h3>K-Means Price Clustering</h3>
-          </div>
-          <p class="ds-description">Groups sitters into $K$ natural price clusters (e.g. Budget / Mid-tier / Premium) by iteratively minimizing within-cluster sum of squared distances to centroids.</p>
-          <div class="ds-formula">$$\arg\min_{\mathbf{S}} \sum_{i=1}^k \sum_{\mathbf{x} \in S_i} \|\mathbf{x} - \boldsymbol{\mu}_i\|^2 \quad \Big| \quad \boldsymbol{\mu}_i = \frac{1}{|S_i|}\sum_{\mathbf{x} \in S_i} \mathbf{x}$$</div>
-          <div class="ds-demo-area">
-            <div style="margin-bottom: 0.75rem;">
-              <label class="form-label" style="font-size:0.8rem;">Number of clusters (K):</label>
-              <input id="kmeansK" class="form-input" style="font-size:0.85rem;" value="3" type="number" min="2" max="6">
-            </div>
-            <button onclick="runKMeansDemo()" class="btn-filter-tag" style="width:100%; justify-content:center;">▶ Cluster Current Sitters by Price</button>
-            <div id="kmeansResult" class="ds-result" style="margin-top:0.6rem;"></div>
-          </div>
-          <div class="ds-use-case">📌 Extension: Identify whether your local market is truly segmented and position yourself in the highest-value cluster.</div>
-        </div>
-
-      </div><!-- /grid -->
-    </section>
-
-    <!-- SECTION 8: DATA SCIENCE & ECONOMETRICS WIKI -->
-    <section id="section-glossary" class="content-section">
-      <div class="section-header">
-        <h2>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          Data Science & Econometrics Encyclopedia
-        </h2>
-        <span style="font-size: 0.82rem; color: #a7f3d0; background: rgba(52, 211, 153, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(52, 211, 153, 0.3);">Technical foundations, formulas & Wikipedia citations</span>
-      </div>
-
-      <div class="wiki-grid">
-        <!-- Wiki Term 1 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Survival_function" target="_blank" rel="noopener noreferrer" class="wiki-link">Empirical Survival Function (ESF) ↗</a></h3>
-            <span class="wiki-tag">Econometrics</span>
-          </div>
-          <p>In market economics, the survival function $S(P) = \mathbb{P}(\text{Price} \ge P)$ models the probability that a buyer chooses a given seller over available market alternatives. In this app, we compute an empirical, continuous survival curve smoothed via Gaussian kernels to estimate hiring probability at every candidate price point.</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator" target="_blank" rel="noopener">Kaplan–Meier Estimator</a> &bull; <a href="https://en.wikipedia.org/wiki/Cumulative_distribution_function" target="_blank" rel="noopener">Complementary CDF</a></div>
-        </div>
-
-        <!-- Wiki Term 2 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Price_elasticity_of_demand" target="_blank" rel="noopener noreferrer" class="wiki-link">Price Elasticity of Demand (PED) ↗</a></h3>
-            <span class="wiki-tag">Microeconomics</span>
-          </div>
-          <p>Measures the responsiveness of booking quantity/probability to a change in price: $\epsilon = \frac{\% \Delta Q}{\% \Delta P} = \frac{P}{Q}\frac{dQ}{dP}$. When $|\epsilon| < 1$ (inelastic), price increases boost revenue. When $|\epsilon| > 1$ (elastic), price increases reduce revenue. Total expected revenue is maximized at the <strong>Unitary Elasticity Point ($|\epsilon| = 1.0$)</strong>.</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Marginal_revenue" target="_blank" rel="noopener">Marginal Revenue</a> &bull; <a href="https://en.wikipedia.org/wiki/Total_revenue_test" target="_blank" rel="noopener">Total Revenue Test</a></div>
-        </div>
-
-        <!-- Wiki Term 3 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Interquartile_range" target="_blank" rel="noopener noreferrer" class="wiki-link">Interquartile Range (IQR) & Outlier Fences ↗</a></h3>
-            <span class="wiki-tag">Descriptive Statistics</span>
-          </div>
-          <p>A non-parametric measure of statistical dispersion representing the spread of the middle 50% of values: $\text{IQR} = Q_3 - Q_1$. John Tukey defined outlier fences at $[Q_1 - 1.5\cdot\text{IQR}, \; Q_3 + 1.5\cdot\text{IQR}]$, which we apply in the Outlier Studio to flag distorted price rates without making normal distribution assumptions.</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Outlier#Tukey's_fences" target="_blank" rel="noopener">Tukey's Fences</a> &bull; <a href="https://en.wikipedia.org/wiki/Box_plot" target="_blank" rel="noopener">Box Plots</a></div>
-        </div>
-
-        <!-- Wiki Term 4 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Kernel_density_estimation" target="_blank" rel="noopener noreferrer" class="wiki-link">Kernel Density Estimation (KDE) ↗</a></h3>
-            <span class="wiki-tag">Non-Parametric Estimation</span>
-          </div>
-          <p>A statistical technique for estimating the continuous probability density function (PDF) of price variables. Unlike discrete histograms that depend on arbitrary bin intervals, KDE applies smooth Gaussian kernels $\hat{f}_h(x) = \frac{1}{nh}\sum K\left(\frac{x-x_i}{h}\right)$ using Silverman's rule of thumb bandwidth $h = 1.06\hat{\sigma}n^{-1/5}$.</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Kernel_density_estimation#Bandwidth_selection" target="_blank" rel="noopener">Silverman's Bandwidth</a> &bull; <a href="https://en.wikipedia.org/wiki/Gaussian_function" target="_blank" rel="noopener">Gaussian Kernel</a></div>
-        </div>
-
-        <!-- Wiki Term 5 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Truncated_mean" target="_blank" rel="noopener noreferrer" class="wiki-link">Trimmed Mean (Truncated Mean) ↗</a></h3>
-            <span class="wiki-tag">Robust Statistics</span>
-          </div>
-          <p>A statistical measure of central tendency calculated by discarding a fixed percentage (e.g. 10%) of the lowest and highest values before computing the arithmetic average. It offers a balance between the median (highly robust but loses magnitude info) and the mean (vulnerable to severe skew).</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Robust_statistics" target="_blank" rel="noopener">Robust Statistics</a> &bull; <a href="https://en.wikipedia.org/wiki/Winsorized_mean" target="_blank" rel="noopener">Winsorized Mean</a></div>
-        </div>
-
-        <!-- Wiki Term 6 -->
-        <div class="card wiki-card">
-          <div class="wiki-card-header">
-            <h3><a href="https://en.wikipedia.org/wiki/Server-sent_events" target="_blank" rel="noopener noreferrer" class="wiki-link">Server-Sent Events (SSE) ↗</a></h3>
-            <span class="wiki-tag">Web Engineering</span>
-          </div>
-          <p>A W3C standard protocol enabling servers to push asynchronous, unidirectional text event streams to web clients over HTTP (`text/event-stream`). Used in this platform to stream live Playwright scraping logs and page-by-page progress in real-time without polling overhead.</p>
-          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/WebSocket" target="_blank" rel="noopener">WebSockets</a> &bull; <a href="https://en.wikipedia.org/wiki/Push_technology" target="_blank" rel="noopener">HTTP Push Technology</a></div>
         </div>
       </div>
     </section>
