@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "mapbox-geospatial-operations": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-geospatial-operations/SKILL.md",
+      "computedHash": "9edd54aac79f953cb61b980c15b87e52fbe628d22d43940cc2fd98b825d5c154"
+    }
+  }
+}
