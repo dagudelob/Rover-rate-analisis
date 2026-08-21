@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 from app.config import settings
 from app.services.scraper.strategy import BaseScraperStrategy
 from app.services.scraper.browser import create_browser_context
-from app.services.scraper.geocoding import convert_km_to_rover_radius_miles
+from app.services.scraper.geocoding import geocode_location, convert_km_to_rover_radius_miles
 from app.services.scraper.parser import CARD_EXTRACTOR_JS, SERVICE_NAMES, build_sitter_record
 
 logger = logging.getLogger("rover.services.scraper.rover")
@@ -51,7 +51,6 @@ class RoverScraperStrategy(BaseScraperStrategy):
             if event_callback:
                 event_callback(event_type, data)
 
-        # Decide whether we scrape a single service or run sequential passes for all 5 services
         services_to_scrape = (
             CORE_ROVER_SERVICES if service_type == "all-services" else [service_type]
         )
@@ -65,13 +64,16 @@ class RoverScraperStrategy(BaseScraperStrategy):
             )
         })
 
+        center_coords = geocode_location(location)
+        center_lat, center_lng = center_coords if center_coords else (43.6532, -79.3832)
+        emit("log", {"message": f"Resolved base location coordinates: [{center_lat:.4f}, {center_lng:.4f}]"})
+
         radius_miles = convert_km_to_rover_radius_miles(radius_km)
         encoded_location = urllib.parse.quote(location)
 
         playwright, browser, context, page = await create_browser_context(proxy_url)
         emit("log", {"message": "Launching Chromium browser with stealth anti-detection flags..."})
 
-        # Unified sitter map keyed by profile_url: allows merging multi-service rates into 1 record per sitter
         sitter_map: Dict[str, Dict[str, Any]] = {}
         pages_completed_total = 0
 
@@ -103,7 +105,7 @@ class RoverScraperStrategy(BaseScraperStrategy):
                         response = await page.goto(url, wait_until="domcontentloaded", timeout=45000)
                         status = response.status if response else "200"
                         emit("log", {
-                            "message": f"Page {current_page} loaded (HTTP {status}). Human delay pause..."
+                            "message": f"Page {current_page} loaded (HTTP {status}). Pausing stochastic human delay..."
                         })
 
                         await page.wait_for_timeout(
@@ -136,14 +138,14 @@ class RoverScraperStrategy(BaseScraperStrategy):
                                 location=location,
                                 radius_km=radius_km,
                                 total_idx=len(sitter_map),
+                                center_lat=center_lat,
+                                center_lng=center_lng,
                             )
                             if not record:
                                 continue
 
-                            # If sitter is already in map, merge the new service rate
                             if profile_url in sitter_map:
                                 existing = sitter_map[profile_url]
-                                # Add or update service in existing sitter's services list
                                 existing_services = existing.get("services", [])
                                 if not any(s.get("service_type") == current_service for s in existing_services):
                                     existing_services.append({
@@ -153,6 +155,11 @@ class RoverScraperStrategy(BaseScraperStrategy):
                                         "rate_unit": record["rate_unit"],
                                     })
                                 existing["services"] = existing_services
+                                if not existing.get("lat") and record.get("lat"):
+                                    existing["lat"] = record.get("lat")
+                                    existing["lng"] = record.get("lng")
+                                if not existing.get("postal_code") and record.get("postal_code"):
+                                    existing["postal_code"] = record.get("postal_code")
                             else:
                                 if max_results and len(sitter_map) >= max_results and service_type != "all-services":
                                     break
@@ -171,12 +178,10 @@ class RoverScraperStrategy(BaseScraperStrategy):
                         emit("log", {"message": f"[!] Error on page {current_page} ({current_service}): {nav_err}"})
                         break
 
-                    # Inter-page delay
                     if current_page < max_pages:
                         delay = random.uniform(settings.scraper_page_delay_min, settings.scraper_page_delay_max)
                         await asyncio.sleep(delay)
 
-                # Inter-service delay if multiple services
                 if srv_idx < len(services_to_scrape):
                     srv_pause = random.uniform(2.0, 4.0)
                     emit("log", {"message": f"Completed {srv_display_name}. Pausing {srv_pause:.1f}s before next service pass..."})
@@ -193,8 +198,8 @@ class RoverScraperStrategy(BaseScraperStrategy):
             "location": location,
             "service_type": service_type,
             "radius_km": radius_km,
-            "center_lat": None,
-            "center_lng": None,
+            "center_lat": center_lat,
+            "center_lng": center_lng,
             "pages_completed": pages_completed_total,
             "records": all_records,
         }

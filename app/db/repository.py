@@ -3,7 +3,7 @@ Data Access Layer — Repository pattern for all database CRUD operations.
 
 Clean 3-table relational architecture:
 1. search_sessions  (audit log & session statistical summaries)
-2. sitters          (master unique sitter profiles)
+2. sitters          (master unique sitter profiles + real postal code & coordinates)
 3. sitter_services  (1-to-many rate matrix per sitter)
 """
 import logging
@@ -35,7 +35,6 @@ def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
             return None
         
         result = dict(session)
-        # Fetch master sitters for this location
         cursor.execute(
             """
             SELECT s.*
@@ -160,6 +159,9 @@ def get_master_historical_data() -> List[Dict[str, Any]]:
                 s.reviews_count,
                 s.location,
                 s.neighborhood,
+                s.postal_code,
+                s.lat,
+                s.lng,
                 s.profile_url,
                 s.first_scraped_at,
                 s.last_updated_at,
@@ -205,9 +207,9 @@ def upsert_sitters_and_services_bulk(
                 """
                 INSERT INTO sitters (
                     member_id, name, profile_url, headline, photo_url,
-                    rating, reviews_count, location, neighborhood,
+                    rating, reviews_count, location, neighborhood, postal_code, lat, lng,
                     platform, first_scraped_at, last_updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(member_id) DO UPDATE SET
                     name = excluded.name,
                     headline = excluded.headline,
@@ -216,6 +218,9 @@ def upsert_sitters_and_services_bulk(
                     reviews_count = excluded.reviews_count,
                     location = excluded.location,
                     neighborhood = coalesce(excluded.neighborhood, sitters.neighborhood),
+                    postal_code = coalesce(excluded.postal_code, sitters.postal_code),
+                    lat = coalesce(excluded.lat, sitters.lat),
+                    lng = coalesce(excluded.lng, sitters.lng),
                     last_updated_at = excluded.last_updated_at
                 """,
                 (
@@ -228,6 +233,9 @@ def upsert_sitters_and_services_bulk(
                     s.get("reviews_count") or 0,
                     location,
                     s.get("neighborhood") or location,
+                    s.get("postal_code"),
+                    s.get("lat"),
+                    s.get("lng"),
                     platform,
                     now,
                     now
@@ -286,7 +294,7 @@ def get_all_normalized_sitters_with_services() -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, member_id, name, profile_url, headline, photo_url,
-                   rating, reviews_count, location, neighborhood, platform, last_updated_at
+                   rating, reviews_count, location, neighborhood, postal_code, lat, lng, platform, last_updated_at
             FROM sitters
             ORDER BY rating DESC, reviews_count DESC
         """)

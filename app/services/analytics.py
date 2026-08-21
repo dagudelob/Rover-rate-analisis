@@ -1,5 +1,6 @@
 """
-Analytics service — market statistics, pricing optimizer, CDF curves, cross-service benchmarks, and neighborhood aggregations.
+Analytics service — market statistics, pricing optimizer, CDF curves, cross-service benchmarks,
+neighborhood aggregations, and dedicated per-service analytics for all 5 Rover service categories.
 
 All logic is pure Python/NumPy/Pandas. No FastAPI, no DB, no HTTP concerns.
 """
@@ -11,13 +12,205 @@ import pandas as pd
 
 logger = logging.getLogger("rover.services.analytics")
 
+CORE_SERVICES = [
+    "dog-walking",
+    "overnight-boarding",
+    "house-sitting",
+    "drop-in-visits",
+    "day-care",
+]
+
+SERVICE_TITLES = {
+    "dog-walking": "Dog Walking",
+    "overnight-boarding": "Overnight Boarding",
+    "house-sitting": "House Sitting",
+    "drop-in-visits": "Drop-in Visits",
+    "day-care": "Day Care",
+}
+
+
+def calculate_single_service_stats(
+    service_type: str,
+    records: List[Dict[str, Any]],
+    excluded_indices: Optional[set] = None
+) -> Dict[str, Any]:
+    """
+    Computes a full statistical & revenue optimization block for a single service category.
+    """
+    if excluded_indices is None:
+        excluded_indices = set()
+
+    # Extract all prices specific to this service type
+    valid_items = []
+    for idx, r in enumerate(records):
+        if idx in excluded_indices:
+            continue
+
+        price_val = None
+        # Check services list
+        for s in r.get("services", []):
+            if s.get("service_type") == service_type and s.get("price_numeric") is not None:
+                price_val = float(s["price_numeric"])
+                break
+
+        # Fallback to primary record price if service matches
+        if price_val is None and r.get("service_type") == service_type and r.get("price_numeric") is not None:
+            price_val = float(r["price_numeric"])
+
+        if price_val is not None and price_val > 0:
+            valid_items.append({
+                "record_idx": idx,
+                "name": r.get("name", "Sitter"),
+                "price": price_val,
+                "reviews_count": float(r.get("reviews_count") or 0),
+                "rating": r.get("rating") or "5.0",
+                "neighborhood": r.get("neighborhood") or r.get("location_query") or "Local Area",
+            })
+
+    if not valid_items:
+        return {
+            "service_type": service_type,
+            "service_title": SERVICE_TITLES.get(service_type, service_type.title()),
+            "total_sitters": 0,
+            "min_price": None,
+            "avg_price": None,
+            "median_price": None,
+            "p10_price": None,
+            "p25_price": None,
+            "p75_price": None,
+            "p90_price": None,
+            "max_price": None,
+            "std_dev": None,
+            "variance": None,
+            "trimmed_mean_10": None,
+            "iqr": None,
+            "outlier_bounds": {"lower": None, "upper": None},
+            "price_distribution": [],
+            "cdf_curve": [],
+            "scatter_points": [],
+            "pricing_optimizer": {
+                "sweet_spot_price": None,
+                "recommended_range": {"min": None, "max": None},
+                "max_expected_revenue_index": None,
+                "strategy": "No data",
+                "curve": [],
+            },
+            "outlier_indices": [],
+        }
+
+    prices = pd.Series([item["price"] for item in valid_items])
+    reviews = pd.Series([item["reviews_count"] for item in valid_items])
+
+    q25 = float(prices.quantile(0.25))
+    q75 = float(prices.quantile(0.75))
+    iqr_val = q75 - q25
+    lower_iqr_bound = round(max(0.0, q25 - 1.5 * iqr_val), 2)
+    upper_iqr_bound = round(q75 + 1.5 * iqr_val, 2)
+
+    std_val = float(prices.std()) if len(prices) > 1 else 0.0
+    var_val = float(prices.var()) if len(prices) > 1 else 0.0
+
+    trim_pct = 0.10
+    if len(prices) >= 5:
+        lower_cut = float(prices.quantile(trim_pct))
+        upper_cut = float(prices.quantile(1.0 - trim_pct))
+        trimmed_prices = prices[(prices >= lower_cut) & (prices <= upper_cut)]
+        trimmed_mean = float(trimmed_prices.mean()) if len(trimmed_prices) > 0 else float(prices.mean())
+    else:
+        trimmed_mean = float(prices.mean())
+
+    # Optimal Pricing Sweet Spot Calculation for this specific service
+    optimizer_data = calculate_pricing_sweet_spot(prices, reviews)
+
+    # 1. Price Distribution Histogram
+    price_distribution = []
+    try:
+        min_p = float(prices.min())
+        max_p = float(prices.max())
+        if min_p == max_p:
+            bins = [min_p - 5.0, min_p + 5.0]
+        else:
+            num_bins = min(8, max(4, len(prices.unique())))
+            bins = np.linspace(min_p, max_p, num_bins + 1)
+
+        hist, bin_edges = np.histogram(prices, bins=bins)
+        price_distribution = [
+            {
+                "range": f"${bin_edges[i]:.0f} - ${bin_edges[i + 1]:.0f}",
+                "count": int(hist[i]),
+                "min": float(bin_edges[i]),
+                "max": float(bin_edges[i + 1]),
+            }
+            for i in range(len(hist))
+        ]
+    except Exception as exc:
+        logger.warning("Error computing price histogram for %s: %s", service_type, exc)
+
+    # 2. Cumulative Distribution Function (CDF)
+    cdf_curve = []
+    try:
+        sorted_prices = np.sort(prices.to_numpy())
+        n = len(sorted_prices)
+        cum_probs = np.arange(1, n + 1) / n * 100.0
+        step = max(1, n // 20)
+        cdf_curve = [
+            {"price": round(float(sorted_prices[i]), 1), "percentile": round(float(cum_probs[i]), 1)}
+            for i in range(0, n, step)
+        ]
+        if cdf_curve and cdf_curve[-1]["percentile"] < 100.0:
+            cdf_curve.append({"price": round(float(sorted_prices[-1]), 1), "percentile": 100.0})
+    except Exception as exc:
+        logger.warning("Error computing CDF curve for %s: %s", service_type, exc)
+
+    # 3. Scatter Points
+    scatter_points = [
+        {
+            "name": item["name"],
+            "price": item["price"],
+            "reviews_count": item["reviews_count"],
+            "rating": item["rating"],
+            "neighborhood": item["neighborhood"],
+        }
+        for item in valid_items
+    ]
+
+    outlier_indices = [
+        item["record_idx"] for item in valid_items
+        if item["price"] < lower_iqr_bound or item["price"] > upper_iqr_bound
+    ]
+
+    return {
+        "service_type": service_type,
+        "service_title": SERVICE_TITLES.get(service_type, service_type.title()),
+        "total_sitters": len(valid_items),
+        "min_price": round(float(prices.min()), 2),
+        "avg_price": round(float(prices.mean()), 2),
+        "median_price": round(float(prices.median()), 2),
+        "p10_price": round(float(prices.quantile(0.10)), 2),
+        "p25_price": round(q25, 2),
+        "p75_price": round(q75, 2),
+        "p90_price": round(float(prices.quantile(0.90)), 2),
+        "max_price": round(float(prices.max()), 2),
+        "std_dev": round(std_val, 2),
+        "variance": round(var_val, 2),
+        "trimmed_mean_10": round(trimmed_mean, 2),
+        "iqr": round(iqr_val, 2),
+        "outlier_bounds": {"lower": lower_iqr_bound, "upper": upper_iqr_bound},
+        "price_distribution": price_distribution,
+        "cdf_curve": cdf_curve,
+        "scatter_points": scatter_points,
+        "pricing_optimizer": optimizer_data,
+        "outlier_indices": outlier_indices,
+    }
+
 
 def calculate_market_statistics(
     records: List[Dict[str, Any]], excluded_indices: Optional[set] = None
 ) -> Dict[str, Any]:
     """
     Computes comprehensive market price metrics, percentiles, dispersion indicators,
-    empirical CDF curves, cross-service comparatives, and neighborhood rate breakdowns.
+    empirical CDF curves, cross-service comparatives, neighborhood breakdowns,
+    AND generates dedicated per-service analytics for each of the 5 core Rover services.
     """
     if excluded_indices is None:
         excluded_indices = set()
@@ -48,6 +241,7 @@ def calculate_market_statistics(
         "cdf_curve": [],
         "service_comparisons": {},
         "neighborhood_breakdown": [],
+        "per_service_analytics": {},
         "pricing_optimizer": {
             "sweet_spot_price": None,
             "recommended_range": {"min": None, "max": None},
@@ -59,6 +253,11 @@ def calculate_market_statistics(
 
     if not active_records:
         return empty_stats
+
+    # Compute dedicated statistical models for all 5 services
+    per_service_analytics = {}
+    for stype in CORE_SERVICES:
+        per_service_analytics[stype] = calculate_single_service_stats(stype, records, excluded_indices)
 
     prices = pd.Series([float(r["price_numeric"]) for r in active_records])
     reviews = pd.Series([float(r.get("reviews_count") or 0) for r in active_records])
@@ -81,7 +280,6 @@ def calculate_market_statistics(
     else:
         trimmed_mean = float(prices.mean())
 
-    # Optimal Pricing Sweet Spot Calculation
     optimizer_data = calculate_pricing_sweet_spot(prices, reviews)
 
     # 1. Price Distribution Histogram
@@ -108,13 +306,12 @@ def calculate_market_statistics(
     except Exception as exc:
         logger.warning("Error computing price histogram: %s", exc)
 
-    # 2. Cumulative Density Function (CDF / Empirical Quantile Percentiles)
+    # 2. CDF Curve
     cdf_curve = []
     try:
         sorted_prices = np.sort(prices.to_numpy())
         n = len(sorted_prices)
         cum_probs = np.arange(1, n + 1) / n * 100.0
-        # Sample up to 20 representative points for clean frontend rendering
         step = max(1, n // 20)
         cdf_curve = [
             {"price": round(float(sorted_prices[i]), 1), "percentile": round(float(cum_probs[i]), 1)}
@@ -125,10 +322,7 @@ def calculate_market_statistics(
     except Exception as exc:
         logger.warning("Error computing CDF curve: %s", exc)
 
-    # 3. Cross-Service Comparative Statistics
     service_comparisons = calculate_cross_service_stats(active_records)
-
-    # 4. Neighborhood / Area Grouping Statistics
     neighborhood_breakdown = calculate_neighborhood_stats(active_records)
 
     return {
@@ -152,19 +346,14 @@ def calculate_market_statistics(
         "cdf_curve": cdf_curve,
         "service_comparisons": service_comparisons,
         "neighborhood_breakdown": neighborhood_breakdown,
+        "per_service_analytics": per_service_analytics,
         "pricing_optimizer": optimizer_data,
     }
 
 
 def calculate_cross_service_stats(records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Calculates price distributions and averages across all 5 Rover service categories."""
-    service_prices: Dict[str, List[float]] = {
-        "dog-walking": [],
-        "overnight-boarding": [],
-        "house-sitting": [],
-        "drop-in-visits": [],
-        "day-care": [],
-    }
+    """Calculates price distributions across all 5 Rover service categories."""
+    service_prices: Dict[str, List[float]] = {stype: [] for stype in CORE_SERVICES}
 
     for r in records:
         services = r.get("services", [])
@@ -209,9 +398,8 @@ def calculate_neighborhood_stats(records: List[Dict[str, Any]]) -> List[Dict[str
             "max_price": round(float(s_series.max()), 1),
         })
 
-    # Sort neighborhoods by count descending
     breakdown.sort(key=lambda x: x["sitters_count"], reverse=True)
-    return breakdown[:10]  # Top 10 areas
+    return breakdown[:10]
 
 
 def calculate_pricing_sweet_spot(prices: pd.Series, reviews: pd.Series) -> Dict[str, Any]:

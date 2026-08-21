@@ -21,6 +21,35 @@ def test_market_statistics_basic():
     assert stats["iqr"] > 0
     assert "pricing_optimizer" in stats
     assert stats["pricing_optimizer"]["sweet_spot_price"] is not None
+    assert "per_service_analytics" in stats
+    assert "dog-walking" in stats["per_service_analytics"]
+
+def test_market_statistics_multi_service_separation():
+    records = [
+        {
+            "name": "Sarah",
+            "price_numeric": 25.0,
+            "services": [
+                {"service_type": "dog-walking", "price_numeric": 25.0},
+                {"service_type": "overnight-boarding", "price_numeric": 70.0}
+            ]
+        },
+        {
+            "name": "David",
+            "price_numeric": 30.0,
+            "services": [
+                {"service_type": "dog-walking", "price_numeric": 30.0},
+                {"service_type": "overnight-boarding", "price_numeric": 80.0}
+            ]
+        }
+    ]
+    stats = calculate_market_statistics(records)
+    walking_stats = stats["per_service_analytics"]["dog-walking"]
+    boarding_stats = stats["per_service_analytics"]["overnight-boarding"]
+
+    assert walking_stats["median_price"] == 27.5
+    assert boarding_stats["median_price"] == 75.0
+    assert walking_stats["pricing_optimizer"]["sweet_spot_price"] < boarding_stats["pricing_optimizer"]["sweet_spot_price"]
 
 def test_market_statistics_empty():
     stats = calculate_market_statistics([])
@@ -67,7 +96,6 @@ def test_pricing_sweet_spot_empirical_survival():
     assert res["recommended_range"]["min"] < res["recommended_range"]["max"]
     assert len(res["curve"]) > 0
     
-    # Check that conversion probability decreases as price increases
     first_pt = res["curve"][0]
     last_pt = res["curve"][-1]
     assert first_pt["conversion_probability_pct"] > last_pt["conversion_probability_pct"]

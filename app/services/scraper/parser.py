@@ -2,15 +2,16 @@
 DOM card data extraction and sitter record parsing.
 
 Responsible for:
-- JavaScript evaluate() call that extracts raw card data, text, badges, and neighborhood from the DOM
+- JavaScript evaluate() call that extracts raw card data, text, badges, neighborhood, and postal code FSA from the DOM
 - Real Price extraction with service-specific unit validation
-- Sitter name, headline, neighborhood/area, rating, and review count parsing
+- Sitter name, headline, neighborhood/area, postal code FSA, rating, and review count parsing
 - Multi-service rate extraction
-- Assembling the typed sitter record dict (with zero artificial coordinates)
 """
 import logging
 import re
 from typing import Any, Dict, List, Optional
+
+from app.services.scraper.geocoding import extract_postal_code_fsa, geocode_postal_code_with_city
 
 logger = logging.getLogger("rover.services.scraper.parser")
 
@@ -67,7 +68,7 @@ CARD_EXTRACTOR_JS = """
             }
         }
 
-        // Find the price badge element — first element whose text starts with "$N"
+        // Find the price badge element
         let priceText = '';
         const allElements = Array.from(card.querySelectorAll('*'));
         for (const el of allElements) {
@@ -88,7 +89,7 @@ CARD_EXTRACTOR_JS = """
             extractedName = (a.innerText || '').trim();
         }
 
-        // Extract neighborhood / area text from card
+        // Extract location / postal code / neighborhood elements
         let neighborhood = '';
         const locationEl = card.querySelector('[class*="location"], [class*="neighborhood"], [data-testid*="location"], [data-testid*="neighborhood"]');
         if (locationEl) {
@@ -119,12 +120,7 @@ def extract_price(
 ) -> tuple[Optional[float], Optional[str], Optional[str]]:
     """
     3-tier price extraction pipeline with service-unit validation.
-
-    Returns (price_numeric, raw_price, rate_unit) — all may be None if no price found.
-
-    Tier 1: dedicated price badge element text
-    Tier 2: regex scan for "$XX per [unit]" pattern in card text
-    Tier 3: first standalone "$XX" in header lines (bio/review lines are skipped)
+    Returns (price_numeric, raw_price, rate_unit).
     """
     target_tokens = SERVICE_UNIT_EXPECTATIONS.get(service_type, ["walk", "night", "visit", "day"])
     price_numeric: Optional[float] = None
@@ -196,7 +192,6 @@ def extract_price(
 def extract_all_services_and_prices(card_text: str, price_text: str = "") -> List[Dict[str, Any]]:
     """
     Extracts all services and corresponding rates advertised by a sitter.
-    Scans for Rover service categories and their respective unit rates.
     """
     extracted_services: List[Dict[str, Any]] = []
     seen_types = set()
@@ -244,14 +239,14 @@ def extract_all_services_and_prices(card_text: str, price_text: str = "") -> Lis
     return extracted_services
 
 
-# ── Name / Headline / Neighborhood Parsing ────────────────────────────────────
+# ── Name / Headline / Postal Code / Neighborhood Parsing ───────────────────────
 
 def parse_sitter_name_and_headline(
     extracted_name: str, card_text: str, profile_url: str
-) -> tuple[str, Optional[str], Optional[str]]:
+) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
     """
-    Cleans the sitter name, extracts the headline, and detects real neighborhood/location text.
-    Returns (name, headline, neighborhood).
+    Cleans the sitter name, extracts the headline, and detects real postal code FSA (e.g. M5V) and neighborhood.
+    Returns (name, headline, neighborhood, postal_code).
     """
     name = extracted_name
     if name:
@@ -263,7 +258,8 @@ def parse_sitter_name_and_headline(
     lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
     headline: Optional[str] = None
     neighborhood: Optional[str] = None
-    
+    postal_code: Optional[str] = extract_postal_code_fsa(card_text)
+
     skip_terms = {
         "view all", "photo", "total", "per walk", "per night",
         "highly responsive", "repeat clients", "out of 5 stars", "$",
@@ -287,13 +283,12 @@ def parse_sitter_name_and_headline(
         slug = profile_url.split("/members/")[-1].strip("/")
         name = " ".join(word.capitalize() for word in slug.split("-")[:2])
 
-    return name or "Rover Sitter", headline, neighborhood
+    return name or "Rover Sitter", headline, neighborhood, postal_code
 
 
 def parse_rating_and_reviews(card_text: str) -> tuple[Optional[str], Optional[float], Optional[str], int]:
     """
     Extracts rating, rating_numeric, reviews text, and reviews_count from card text.
-    Returns (rating, rating_numeric, reviews, reviews_count).
     """
     rating: Optional[str] = None
     rating_numeric: Optional[float] = None
@@ -315,7 +310,7 @@ def parse_rating_and_reviews(card_text: str) -> tuple[Optional[str], Optional[fl
     return rating, rating_numeric, reviews, reviews_count
 
 
-# ── Record Assembly ────────────────────────────────────────────────────────────
+# ── Record Assembly with Real Postal Code Geocoding ─────────────────────────────
 
 def build_sitter_record(
     card: Dict[str, Any],
@@ -323,10 +318,11 @@ def build_sitter_record(
     location: str,
     radius_km: Optional[float] = None,
     total_idx: int = 0,
+    center_lat: Optional[float] = None,
+    center_lng: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Parses a raw card dict into a typed sitter record.
-    Uses real neighborhood and real prices without artificial coordinates.
+    Parses a raw card dict into a typed sitter record with real FSA postal code geocoding.
     """
     profile_url = card["url"]
     card_text = card["cardText"]
@@ -339,8 +335,18 @@ def build_sitter_record(
     if price_numeric is None:
         return None
 
-    name, headline, parsed_neighborhood = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
+    name, headline, parsed_neighborhood, postal_code = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
     neighborhood = card_neighborhood or parsed_neighborhood or location
+
+    # Geocode real postal code FSA centroid (e.g. "M5V, Toronto, ON")
+    lat, lng = None, None
+    if postal_code:
+        coords = geocode_postal_code_with_city(postal_code, location)
+        if coords:
+            lat, lng = coords
+
+    if lat is None or lng is None:
+        lat, lng = center_lat, center_lng
 
     rating, rating_numeric, reviews, reviews_count = parse_rating_and_reviews(card_text)
     all_services = extract_all_services_and_prices(card_text, price_text)
@@ -366,6 +372,9 @@ def build_sitter_record(
         "reviews_count": reviews_count,
         "headline": headline,
         "neighborhood": neighborhood,
+        "postal_code": postal_code,
+        "lat": lat,
+        "lng": lng,
         "profile_url": profile_url,
         "photo_url": photo_url,
         "service_type": service_type,

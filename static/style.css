@@ -1192,3 +1192,56 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--accent-emerald);
   text-decoration: underline;
 }
+
+/* Service Focus Tabs */
+.service-tab-btn {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.service-tab-btn:hover {
+  color: var(--text-heading);
+  border-color: var(--accent-primary);
+}
+
+.service-tab-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Price Marker Pin in Leaflet */
+.custom-price-marker {
+  background: transparent;
+  border: none;
+}
+
+.price-marker-pin {
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.price-marker-pin:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.9);
+}
+
+.map-card {
+  border: 1px solid var(--border-color);
+}

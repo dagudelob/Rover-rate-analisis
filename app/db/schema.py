@@ -1,9 +1,9 @@
 """
 Database schema initialization.
 
-Defines the 3 core normalized tables:
+Defines the 3 core normalized tables with support for real postal_code, lat, lng:
 1. search_sessions  - Audit history & aggregate statistical snapshots
-2. sitters          - Master unique sitter profiles (member_id, name, neighborhood, rating, etc.)
+2. sitters          - Master unique sitter profiles (member_id, name, postal_code, neighborhood, lat, lng)
 3. sitter_services  - 1-to-many normalized service rates per sitter
 """
 import logging
@@ -55,6 +55,9 @@ def init_db() -> None:
             reviews_count    INTEGER DEFAULT 0,
             location         TEXT,
             neighborhood     TEXT,
+            postal_code      TEXT,
+            lat              REAL,
+            lng              REAL,
             platform         TEXT    DEFAULT 'rover',
             first_scraped_at TEXT    NOT NULL,
             last_updated_at  TEXT    NOT NULL
@@ -77,17 +80,22 @@ def init_db() -> None:
         )
         """)
 
-        # ── Forward-Compatible Column Migrations on sitters before index creation ─
+        # ── Forward-Compatible Column Migrations on sitters ─────────────────────
         cursor.execute("PRAGMA table_info(sitters)")
         columns = {row["name"] for row in cursor.fetchall()}
         if "neighborhood" not in columns:
             cursor.execute("ALTER TABLE sitters ADD COLUMN neighborhood TEXT")
-            logger.info("Migration applied: added neighborhood column to sitters table")
+        if "postal_code" not in columns:
+            cursor.execute("ALTER TABLE sitters ADD COLUMN postal_code TEXT")
+        if "lat" not in columns:
+            cursor.execute("ALTER TABLE sitters ADD COLUMN lat REAL")
+        if "lng" not in columns:
+            cursor.execute("ALTER TABLE sitters ADD COLUMN lng REAL")
 
         # ── Performance Indexes ───────────────────────────────────────────────────
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_timestamp ON search_sessions(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_member_id ON sitters(member_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_neighborhood ON sitters(neighborhood)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_postal_code ON sitters(postal_code)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_fk ON sitter_services(sitter_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_type ON sitter_services(service_type)")
 

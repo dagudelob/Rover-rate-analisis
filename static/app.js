@@ -4,8 +4,13 @@
 const AppState = {
     sessionId: null,
     records: [],
+    stats: {},
+    perServiceAnalytics: {},
+    activeServiceTab: "all", // "all", "dog-walking", "overnight-boarding", "house-sitting", "drop-in-visits", "day-care"
     excludedIndices: new Set(),
     autoOutliers: [],
+    centerLat: 43.6532,
+    centerLng: -79.3832,
     
     // UI Table & Filter state
     sortKey: "default",
@@ -20,6 +25,9 @@ const AppState = {
     resetSession() {
         this.sessionId = null;
         this.records = [];
+        this.stats = {};
+        this.perServiceAnalytics = {};
+        this.activeServiceTab = "all";
         this.excludedIndices.clear();
         this.autoOutliers = [];
     },
@@ -39,8 +47,9 @@ let currentExcludedIndices = AppState.excludedIndices;
 let currentAutoOutliers = [];
 let currentSessionId = null;
 let activeEventSource = null;
+let currentStatsPayload = null;
 
-// Chart runtime instances
+// Chart & Map runtime instances
 let priceChartInstance = null;
 let cdfChartInstance = null;
 let ratingChartInstance = null;
@@ -48,6 +57,18 @@ let serviceComparisonChartInstance = null;
 let neighborhoodChartInstance = null;
 let temporalChartInstance = null;
 let revenueChartInstance = null;
+let mapInstance = null;
+let heatLayerInstance = null;
+let markersLayerGroup = null;
+
+const SERVICE_TITLES = {
+    "all": "Master Summary",
+    "dog-walking": "Dog Walking",
+    "overnight-boarding": "Overnight Boarding",
+    "house-sitting": "House Sitting",
+    "drop-in-visits": "Drop-in Visits",
+    "day-care": "Day Care",
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     initTheme();
@@ -55,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupCollapsibleTable();
     setupCollapsibleHistorySection();
     setupPlatformSelector();
+    setupServiceTabs();
     loadServices("rover");
     loadHistory();
     loadTemporalTrends();
@@ -72,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// ── Theme Management (Dark / Light Mode) ──────────────────────────────────────
+// ── Theme Management ──────────────────────────────────────────────────────────
 function initTheme() {
     const savedTheme = localStorage.getItem("rover_theme") || "dark";
     applyTheme(savedTheme);
@@ -146,7 +168,94 @@ function setupSidebarNavigation() {
     });
 }
 
-// ── 2. Service Selector ───────────────────────────────────────────────────────
+// ── 2. Service Tabs Switcher ──────────────────────────────────────────────────
+function setupServiceTabs() {
+    const tabBtns = document.querySelectorAll(".service-tab-btn");
+    tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            tabBtns.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            
+            const targetService = btn.getAttribute("data-service-tab");
+            AppState.activeServiceTab = targetService;
+            
+            const activeBadge = document.getElementById("activeServiceBadge");
+            if (activeBadge) {
+                activeBadge.textContent = `Viewing: ${SERVICE_TITLES[targetService] || targetService}`;
+            }
+
+            // Re-render dashboard for active service tab
+            switchActiveServiceView(targetService);
+        });
+    });
+}
+
+function switchActiveServiceView(serviceTab) {
+    if (!currentStatsPayload) return;
+
+    let displayStats = currentStatsPayload;
+    if (serviceTab !== "all" && currentStatsPayload.per_service_analytics && currentStatsPayload.per_service_analytics[serviceTab]) {
+        displayStats = currentStatsPayload.per_service_analytics[serviceTab];
+    }
+
+    const titleText = SERVICE_TITLES[serviceTab] || serviceTab;
+    const optNameEl = document.getElementById("optimizerServiceName");
+    const chartsNameEl = document.getElementById("chartsServiceName");
+    if (optNameEl) optNameEl.textContent = titleText;
+    if (chartsNameEl) chartsNameEl.textContent = titleText;
+
+    // Update KPIs
+    document.getElementById("statTotal").textContent = displayStats.total_sitters || displayStats.active_sitters || 0;
+    document.getElementById("statAvg").textContent = displayStats.avg_price ? `$${displayStats.avg_price}` : "--";
+    document.getElementById("statTrimmed").textContent = displayStats.trimmed_mean_10 ? `$${displayStats.trimmed_mean_10}` : "--";
+    document.getElementById("statMedian").textContent = displayStats.median_price ? `$${displayStats.median_price}` : "--";
+    document.getElementById("statMin").textContent = displayStats.min_price ? `$${displayStats.min_price}` : "--";
+    document.getElementById("statMax").textContent = displayStats.max_price ? `$${displayStats.max_price}` : "--";
+    document.getElementById("statIQR").textContent = (displayStats.p25_price && displayStats.p75_price) ? `$${displayStats.p25_price} - $${displayStats.p75_price}` : "--";
+    document.getElementById("statStdDev").textContent = displayStats.std_dev ? `±$${displayStats.std_dev}` : "--";
+    document.getElementById("statVariance").textContent = displayStats.variance ? `${displayStats.variance}` : "--";
+
+    // Update Advanced Stats Matrix
+    document.getElementById("statP10").textContent = displayStats.p10_price ? `$${displayStats.p10_price}` : "--";
+    document.getElementById("statP25").textContent = displayStats.p25_price ? `$${displayStats.p25_price}` : "--";
+    document.getElementById("statP75").textContent = displayStats.p75_price ? `$${displayStats.p75_price}` : "--";
+    document.getElementById("statP90").textContent = displayStats.p90_price ? `$${displayStats.p90_price}` : "--";
+    document.getElementById("statStdDevBox").textContent = displayStats.std_dev ? `±$${displayStats.std_dev}` : "--";
+    document.getElementById("statTrimmedBox").textContent = displayStats.trimmed_mean_10 ? `$${displayStats.trimmed_mean_10}` : "--";
+
+    // Update Outlier Bounds Label
+    if (displayStats.outlier_bounds && displayStats.outlier_bounds.lower !== null) {
+        document.getElementById("iqrBoundsLabel").textContent = `$${displayStats.outlier_bounds.lower} to $${displayStats.outlier_bounds.upper}`;
+    }
+
+    // Update Optimal Pricing Card & Revenue Curve for this specific service
+    const opt = displayStats.pricing_optimizer || {};
+    if (opt.sweet_spot_price) {
+        document.getElementById("optimizerSweetSpot").textContent = `$${opt.sweet_spot_price.toFixed(0)}`;
+        document.getElementById("optimizerRange").textContent = `$${opt.recommended_range.min.toFixed(0)} - $${opt.recommended_range.max.toFixed(0)}`;
+        const strategyTextEl = document.getElementById("optimizerStrategyText");
+        if (strategyTextEl) strategyTextEl.textContent = opt.strategy || "Optimizes booking yield against local price resistance.";
+        renderRevenueOptimizationChart(opt.curve || [], opt.sweet_spot_price);
+    }
+
+    // Render Charts for this service
+    renderPriceHistogram(displayStats.price_distribution || []);
+    renderCDFChart(displayStats.cdf_curve || []);
+    
+    if (serviceTab === "all") {
+        renderRatingScatter(currentRecords);
+    } else {
+        renderScatterFromPoints(displayStats.scatter_points || []);
+    }
+
+    renderServiceComparisonChart(currentStatsPayload.service_comparisons || {});
+    renderNeighborhoodChart(currentStatsPayload.neighborhood_breakdown || []);
+    
+    // Update Map with Real Postal Centroids and Rates for active service
+    renderHeatmap(currentRecords, AppState.centerLat, AppState.centerLng, serviceTab);
+}
+
+// ── 3. Service Selector ───────────────────────────────────────────────────────
 async function loadServices(platform = "rover") {
     try {
         const res = await fetch(`/api/services?platform=${encodeURIComponent(platform)}`);
@@ -175,7 +284,7 @@ function setupPlatformSelector() {
     }
 }
 
-// ── 3. Search History List & Batch Delete ──────────────────────────────────────
+// ── 4. Search History List ────────────────────────────────────────────────────
 let selectedHistorySessionIds = new Set();
 
 async function loadHistory() {
@@ -303,7 +412,7 @@ function setupHistoryBulkToolbar(sessions) {
         batchDeleteBtn.onclick = async () => {
             const count = selectedHistorySessionIds.size;
             if (count === 0) return;
-            if (!confirm(`Are you sure you want to permanently delete ${count} selected search session(s)?`)) return;
+            if (!confirm(`Permanently delete ${count} selected search session(s)?`)) return;
 
             try {
                 const res = await fetch("/api/history/delete-batch", {
@@ -315,7 +424,7 @@ function setupHistoryBulkToolbar(sessions) {
                 selectedHistorySessionIds.clear();
                 loadHistory();
                 loadTemporalTrends();
-                logToTerminal(`[✓] Deleted ${result.deleted_count || count} sessions from database.`, "success");
+                logToTerminal(`[✓] Deleted ${result.deleted_count || count} sessions.`, "success");
             } catch (err) {
                 console.error("Error deleting sessions:", err);
                 alert("Failed to delete selected sessions.");
@@ -346,8 +455,9 @@ async function selectSession(sessionId) {
         currentRecords = session.sitters || [];
         currentExcludedIndices.clear();
         currentAutoOutliers = [];
+        AppState.centerLat = session.center_lat || 43.6532;
+        AppState.centerLng = session.center_lng || -79.3832;
 
-        // Identify initial outliers
         try {
             const recRes = await fetch("/api/analytics/recalculate", {
                 method: "POST",
@@ -367,7 +477,7 @@ async function selectSession(sessionId) {
     }
 }
 
-// ── 4. Form Submission & Real Multi-Service Extraction ─────────────────────────
+// ── 5. Form Submission & Real Multi-Service Extraction ─────────────────────────
 function setupForm() {
     const form = document.getElementById("scraperForm");
     form.addEventListener("submit", (e) => {
@@ -438,6 +548,8 @@ function startScraping() {
         currentRecords = data.records || [];
         currentExcludedIndices.clear();
         currentAutoOutliers = data.auto_outliers || [];
+        AppState.centerLat = data.center_lat || 43.6532;
+        AppState.centerLng = data.center_lng || -79.3832;
 
         renderResults(data.stats, currentRecords, data.location, data.service_type, data.session_id);
         loadHistory();
@@ -478,46 +590,24 @@ function logToTerminal(msg, type = "info") {
     terminal.scrollTop = terminal.scrollHeight;
 }
 
-// ── 5. Render All Dashboard Results & Charts ───────────────────────────────────
+// ── 6. Render All Dashboard Results & Charts ───────────────────────────────────
 function renderResults(stats, records, location, service, sessionId) {
     document.getElementById("resultsContainer").style.display = "block";
-    
-    // KPI Overview Cards
-    document.getElementById("statTotal").textContent = stats.active_sitters || (records ? records.length : 0);
-    document.getElementById("statExcludedCount").textContent = `${stats.excluded_sitters || 0} excluded outliers`;
-    
-    document.getElementById("statAvg").textContent = stats.avg_price ? `$${stats.avg_price}` : "--";
-    document.getElementById("statTrimmed").textContent = stats.trimmed_mean_10 ? `$${stats.trimmed_mean_10}` : "--";
-    document.getElementById("statMedian").textContent = stats.median_price ? `$${stats.median_price}` : "--";
-    document.getElementById("statMin").textContent = stats.min_price ? `$${stats.min_price}` : "--";
-    document.getElementById("statMax").textContent = stats.max_price ? `$${stats.max_price}` : "--";
-    document.getElementById("statIQR").textContent = (stats.p25_price && stats.p75_price) ? `$${stats.p25_price} - $${stats.p75_price}` : "--";
-    document.getElementById("statStdDev").textContent = stats.std_dev ? `±$${stats.std_dev}` : "--";
-    document.getElementById("statVariance").textContent = stats.variance ? `${stats.variance}` : "--";
+    currentStatsPayload = stats;
+    AppState.stats = stats;
+    AppState.records = records;
 
-    // Optimal Pricing Card & Revenue Curve
-    const opt = stats.pricing_optimizer || {};
-    if (opt.sweet_spot_price) {
-        document.getElementById("optimizerSweetSpot").textContent = `$${opt.sweet_spot_price.toFixed(0)}`;
-        document.getElementById("optimizerRange").textContent = `$${opt.recommended_range.min.toFixed(0)} - $${opt.recommended_range.max.toFixed(0)}`;
-        renderRevenueOptimizationChart(opt.curve || [], opt.sweet_spot_price);
+    // Reset service tab to Master Summary on fresh results
+    const masterTabBtn = document.querySelector('.service-tab-btn[data-service-tab="all"]');
+    if (masterTabBtn) {
+        document.querySelectorAll(".service-tab-btn").forEach(b => b.classList.remove("active"));
+        masterTabBtn.classList.add("active");
+        AppState.activeServiceTab = "all";
+        const activeBadge = document.getElementById("activeServiceBadge");
+        if (activeBadge) activeBadge.textContent = "Viewing: Master Summary";
     }
 
-    // Advanced Stats Matrix
-    document.getElementById("statP10").textContent = stats.p10_price ? `$${stats.p10_price}` : "--";
-    document.getElementById("statP25").textContent = stats.p25_price ? `$${stats.p25_price}` : "--";
-    document.getElementById("statP75").textContent = stats.p75_price ? `$${stats.p75_price}` : "--";
-    document.getElementById("statP90").textContent = stats.p90_price ? `$${stats.p90_price}` : "--";
-    document.getElementById("statStdDevBox").textContent = stats.std_dev ? `±$${stats.std_dev}` : "--";
-    document.getElementById("statTrimmedBox").textContent = stats.trimmed_mean_10 ? `$${stats.trimmed_mean_10}` : "--";
-
-    // Outlier Toolbar Info
-    document.getElementById("iqrOutlierCountBadge").textContent = currentAutoOutliers.length;
-    if (stats.outlier_bounds && stats.outlier_bounds.lower !== null) {
-        document.getElementById("iqrBoundsLabel").textContent = `$${stats.outlier_bounds.lower} to $${stats.outlier_bounds.upper}`;
-    }
-
-    // Export Link & Sitter Count
+    // Setup Export Link & Sitter Count
     const csvBtn = document.getElementById("exportCsvBtn");
     if (csvBtn && sessionId) {
         csvBtn.href = `/api/export/csv/${sessionId}`;
@@ -528,14 +618,11 @@ function renderResults(stats, records, location, service, sessionId) {
         countBadge.textContent = `${records ? records.length : 0} Sitters`;
     }
 
+    // Update 5-service benchmark cards
     updateServiceRateBenchmarks(stats);
 
-    // Render 5 Statistical Charts
-    renderPriceHistogram(stats.price_distribution || []);
-    renderCDFChart(stats.cdf_curve || []);
-    renderRatingScatter(records || []);
-    renderServiceComparisonChart(stats.service_comparisons || {});
-    renderNeighborhoodChart(stats.neighborhood_breakdown || []);
+    // Initial render for active view (Master Summary)
+    switchActiveServiceView("all");
     renderTable(records || []);
 }
 
@@ -555,9 +642,103 @@ function updateServiceRateBenchmarks(stats) {
     if (elDayCare) elDayCare.textContent = `$${Math.round(baseRate * 1.40)} - $${Math.round(baseRate * 1.85)}`;
 }
 
-// ── 6. Statistical Charts ─────────────────────────────────────────────────────
+// ── 7. Leaflet Geospatial Map & Real FSA Heatmap ────────────────────────────────
+function initMapIfNeeded(centerLat, centerLng) {
+    const lat = centerLat || 43.6532;
+    const lng = centerLng || -79.3832;
 
-// Chart 1: Rate Histogram
+    if (!mapInstance) {
+        mapInstance = L.map('mapContainer', {
+            center: [lat, lng],
+            zoom: 12,
+            zoomControl: true
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(mapInstance);
+
+        markersLayerGroup = L.layerGroup().addTo(mapInstance);
+    } else {
+        mapInstance.setView([lat, lng], 12);
+        mapInstance.invalidateSize();
+    }
+}
+
+function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
+    initMapIfNeeded(centerLat, centerLng);
+
+    markersLayerGroup.clearLayers();
+    if (heatLayerInstance) {
+        mapInstance.removeLayer(heatLayerInstance);
+        heatLayerInstance = null;
+    }
+
+    if (!records || records.length === 0) return;
+
+    const heatPoints = [];
+    let validCoordCount = 0;
+
+    records.forEach((sitter, index) => {
+        if (currentExcludedIndices.has(index)) return;
+        if (!sitter.lat || !sitter.lng) return;
+
+        // Get price for target service
+        let price = sitter.price_numeric || 25;
+        if (targetService !== "all" && sitter.services) {
+            const srv = sitter.services.find(s => s.service_type === targetService);
+            if (srv && srv.price_numeric) price = srv.price_numeric;
+        }
+
+        const lat = sitter.lat;
+        const lng = sitter.lng;
+        validCoordCount++;
+
+        // Heatmap intensity normalized
+        heatPoints.push([lat, lng, 0.8]);
+
+        const customIcon = L.divIcon({
+            className: 'custom-price-marker',
+            html: `<div id="map-pin-${index}" class="price-marker-pin" style="background-color: #3b82f6; font-weight:700;">$${Math.round(price)}</div>`,
+            iconSize: [46, 26],
+            iconAnchor: [23, 13]
+        });
+
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markersLayerGroup);
+
+        const postalBadge = sitter.postal_code ? `<span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">📮 ${escapeHtml(sitter.postal_code)}</span>` : '';
+        const popupContent = `
+            <div class="sitter-popup-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4>${escapeHtml(sitter.name)}</h4>
+                    ${postalBadge}
+                </div>
+                <p>${escapeHtml(sitter.headline || sitter.neighborhood || 'Local Pet Sitter')}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                    <span class="sitter-popup-badge">$${Math.round(price)}</span>
+                    <span style="font-size:0.8rem; color:#f59e0b;">★ ${escapeHtml(sitter.rating || '5.0')} (${sitter.reviews_count || 0})</span>
+                </div>
+                ${sitter.profile_url ? `<a href="${sitter.profile_url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:#3b82f6; text-decoration:none;">View Rover Profile ↗</a>` : ''}
+            </div>
+        `;
+        marker.bindPopup(popupContent);
+    });
+
+    if (typeof L.heatLayer === 'function' && heatPoints.length > 0) {
+        heatLayerInstance = L.heatLayer(heatPoints, {
+            radius: 40,
+            blur: 25,
+            maxZoom: 14,
+            max: 1.0,
+            gradient: { 0.2: '#10b981', 0.5: '#3b82f6', 0.8: '#f59e0b', 1.0: '#ef4444' }
+        }).addTo(mapInstance);
+    }
+}
+
+// ── 8. Statistical Charts ─────────────────────────────────────────────────────
+
 function renderPriceHistogram(distribution) {
     const ctx = document.getElementById("priceDistributionChart").getContext("2d");
     if (priceChartInstance) priceChartInstance.destroy();
@@ -590,7 +771,6 @@ function renderPriceHistogram(distribution) {
     });
 }
 
-// Chart 2: Empirical CDF (Cumulative Distribution Function)
 function renderCDFChart(cdfData) {
     const ctx = document.getElementById("cdfChart").getContext("2d");
     if (cdfChartInstance) cdfChartInstance.destroy();
@@ -612,8 +792,7 @@ function renderCDFChart(cdfData) {
                 fill: true,
                 tension: 0.3,
                 borderWidth: 2.5,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                pointRadius: 4
             }]
         },
         options: {
@@ -635,7 +814,6 @@ function renderCDFChart(cdfData) {
     });
 }
 
-// Chart 3: Price vs Review Count Scatter
 function renderRatingScatter(records) {
     const ctx = document.getElementById("ratingScatterChart").getContext("2d");
     if (ratingChartInstance) ratingChartInstance.destroy();
@@ -681,7 +859,48 @@ function renderRatingScatter(records) {
     });
 }
 
-// Chart 4: Cross-Service Comparison Bar Chart
+function renderScatterFromPoints(points) {
+    const ctx = document.getElementById("ratingScatterChart").getContext("2d");
+    if (ratingChartInstance) ratingChartInstance.destroy();
+
+    const scatterData = points.map(p => ({
+        x: p.reviews_count,
+        y: p.price,
+        name: p.name,
+        rating: p.rating
+    }));
+
+    ratingChartInstance = new Chart(ctx, {
+        type: "scatter",
+        data: {
+            datasets: [{
+                label: "Rate vs. Reviews",
+                data: scatterData,
+                backgroundColor: "rgba(16, 185, 129, 0.75)",
+                borderColor: "#10b981",
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.raw.name}: $${ctx.raw.y} | ${ctx.raw.x} reviews (${ctx.raw.rating}★)`
+                    }
+                }
+            },
+            scales: {
+                x: { title: { display: true, text: "Reviews Count", color: "#9ca3af" }, ticks: { color: "#9ca3af" } },
+                y: { title: { display: true, text: "Price ($)", color: "#9ca3af" }, ticks: { color: "#9ca3af" } }
+            }
+        }
+    });
+}
+
 function renderServiceComparisonChart(serviceComps) {
     const ctx = document.getElementById("serviceComparisonChart").getContext("2d");
     if (serviceComparisonChartInstance) serviceComparisonChartInstance.destroy();
@@ -696,7 +915,6 @@ function renderServiceComparisonChart(serviceComps) {
 
     const keys = Object.keys(serviceComps);
     if (keys.length === 0) {
-        // Default visual placeholder
         serviceComparisonChartInstance = new Chart(ctx, {
             type: "bar",
             data: { labels: ["Run All-Services to Compare"], datasets: [] },
@@ -746,7 +964,6 @@ function renderServiceComparisonChart(serviceComps) {
     });
 }
 
-// Chart 5: Neighborhood / Area Comparison
 function renderNeighborhoodChart(hoodData) {
     const ctx = document.getElementById("neighborhoodChart").getContext("2d");
     if (neighborhoodChartInstance) neighborhoodChartInstance.destroy();
@@ -794,7 +1011,6 @@ function renderNeighborhoodChart(hoodData) {
     });
 }
 
-// Revenue Optimization Curve
 function renderRevenueOptimizationChart(curveData, sweetSpotPrice) {
     const ctx = document.getElementById("revenueOptimizationChart").getContext("2d");
     if (revenueChartInstance) revenueChartInstance.destroy();
@@ -862,7 +1078,7 @@ function renderRevenueOptimizationChart(curveData, sweetSpotPrice) {
     });
 }
 
-// ── 7. Outlier Control & Recalculation ──────────────────────────────────────────
+// ── 9. Outlier Control & Recalculation ──────────────────────────────────────────
 function setupOutlierToolbar() {
     const btnAutoIQR = document.getElementById("btnAutoFilterIQR");
     const btnReset = document.getElementById("btnResetFilters");
@@ -905,13 +1121,14 @@ async function recalculateAndRefresh() {
 
         const data = await res.json();
         currentAutoOutliers = data.auto_outliers || [];
-        renderResults(data.stats, currentRecords, "", "", currentSessionId);
+        currentStatsPayload = data.stats;
+        switchActiveServiceView(AppState.activeServiceTab);
     } catch (err) {
         console.error("Error recalculating stats:", err);
     }
 }
 
-// ── 8. Sitter Table Filtering & Sorting ─────────────────────────────────────────
+// ── 10. Sitter Table Filtering & Sorting ────────────────────────────────────────
 let currentSortKey = "default";
 let currentSortOrder = "asc";
 let currentFilterQuery = "";
@@ -1017,7 +1234,7 @@ function updateSortHeaderIcons() {
     });
 }
 
-// ── 9. Render Sitter Table with Real Neighborhoods & 5 Services ───────────────
+// ── 11. Render Sitter Table with Real Postal Code Badges & 5 Services ─────────
 function renderTable(records) {
     const tbody = document.getElementById("sittersTableBody");
     const countBadge = document.getElementById("sittersCountBadge");
@@ -1048,7 +1265,8 @@ function renderTable(records) {
             const nameMatch = (r.name || "").toLowerCase().includes(currentFilterQuery);
             const headlineMatch = (r.headline || "").toLowerCase().includes(currentFilterQuery);
             const hoodMatch = (r.neighborhood || "").toLowerCase().includes(currentFilterQuery);
-            if (!nameMatch && !headlineMatch && !hoodMatch) return false;
+            const postalMatch = (r.postal_code || "").toLowerCase().includes(currentFilterQuery);
+            if (!nameMatch && !headlineMatch && !hoodMatch && !postalMatch) return false;
         }
 
         if (currentStatusFilter === "active" && item.isExcluded) return false;
@@ -1094,9 +1312,9 @@ function renderTable(records) {
                     valB = (rb.name || "").toLowerCase();
                     return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
 
-                case "neighborhood":
-                    valA = (ra.neighborhood || "").toLowerCase();
-                    valB = (rb.neighborhood || "").toLowerCase();
+                case "postal_code":
+                    valA = (ra.postal_code || ra.neighborhood || "").toLowerCase();
+                    valB = (rb.postal_code || rb.neighborhood || "").toLowerCase();
                     return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
 
                 case "price_walk":
@@ -1174,7 +1392,9 @@ function renderTable(records) {
         const outlierTag = isAutoOutlier ? `<span class="badge-outlier-tag" title="Flagged by 1.5*IQR Rule">Outlier</span>` : "";
         const ratingBadge = r.rating ? `<span class="badge-rating">★ ${escapeHtml(r.rating)}</span>` : `<span style="color:var(--text-muted); font-size:0.8rem;">New</span>`;
         const profileLink = r.profile_url ? `<a href="${r.profile_url}" target="_blank" style="color:var(--accent-primary); text-decoration:none; font-weight:500;" onclick="event.stopPropagation();">Profile ↗</a>` : "--";
-        const hoodBadge = `<span style="background: rgba(59, 130, 246, 0.12); color: #93c5fd; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.78rem; font-weight: 500;">${escapeHtml(r.neighborhood || 'Local Area')}</span>`;
+        
+        const postalText = r.postal_code ? `📮 ${r.postal_code}` : (r.neighborhood || 'Local Area');
+        const hoodBadge = `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; border: 1px solid rgba(59, 130, 246, 0.3);">${escapeHtml(postalText)}</span>`;
 
         const cellWalk = getServicePriceCell(r, "dog-walking");
         const cellBoarding = getServicePriceCell(r, "overnight-boarding");
@@ -1208,7 +1428,7 @@ function renderTable(records) {
     });
 }
 
-// ── 10. Temporal Trends Chart ──────────────────────────────────────────────────
+// ── 12. Temporal Trends Chart ──────────────────────────────────────────────────
 async function loadTemporalTrends() {
     try {
         const res = await fetch("/api/analytics/temporal-trends");
