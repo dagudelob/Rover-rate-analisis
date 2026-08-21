@@ -76,6 +76,12 @@
             </a>
           </li>
           <li>
+            <a href="#section-services" class="nav-link" style="color: #38bdf8;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              <span class="nav-text">5-Service Matrix</span>
+            </a>
+          </li>
+          <li>
             <a href="#section-database" class="nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
               <span class="nav-text">Historical Archive</span>
@@ -85,6 +91,12 @@
             <a href="#section-dsacademy" class="nav-link" style="color: #a78bfa;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
               <span class="nav-text">DS Academy</span>
+            </a>
+          </li>
+          <li>
+            <a href="#section-glossary" class="nav-link" style="color: #34d399;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              <span class="nav-text">Data Science Wiki</span>
             </a>
           </li>
         </ul>
@@ -355,31 +367,147 @@
         </div>
       </section>
 
-      <!-- SECTION 5: SITTER LISTINGS TABLE WITH EXCLUSION TOGGLES -->
+      <!-- SECTION 5: SITTER LISTINGS TABLE WITH COLLAPSIBLE CONTROLS -->
       <section id="section-sitters" class="content-section">
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 class="card-title" style="margin-bottom: 0;">Extracted Sitter Listings</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <h3 class="card-title" style="margin-bottom: 0;">Extracted Sitter Listings</h3>
+              <span id="sittersCountBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sitters</span>
+            </div>
             <div style="display: flex; gap: 0.75rem; align-items: center;">
-              <span style="font-size: 0.8rem; color: var(--text-muted);">💡 Toggle checkbox to include/exclude from statistics | Hover to see map service radius</span>
-              <a id="exportCsvBtn" href="#" class="btn-secondary" style="display: none;">Export Session CSV</a>
+              <button id="btnToggleSittersTable" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Sitter Listings Table">
+                <span id="sittersToggleText">Collapse Table</span>
+                <svg id="sittersToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              </button>
+              <a id="exportCsvBtn" href="#" class="btn-secondary" style="display: none; font-size: 0.8rem; padding: 0.4rem 0.85rem;">Export Session CSV</a>
             </div>
           </div>
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px; text-align: center;">Active</th>
-                  <th>Sitter / Headline</th>
-                  <th>Rate</th>
-                  <th>Area / Service Radius</th>
-                  <th>Rating</th>
-                  <th>Reviews</th>
-                  <th>Link</th>
-                </tr>
-              </thead>
-              <tbody id="sittersTableBody"></tbody>
-            </table>
+          <div id="sittersCollapsibleWrapper" class="collapsible-table-wrapper">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 40px; text-align: center;">Active</th>
+                    <th>Sitter / Headline</th>
+                    <th>Rate</th>
+                    <th>Area / Service Radius</th>
+                    <th>Rating</th>
+                    <th>Reviews</th>
+                    <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody id="sittersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5.5: 5-SERVICE STRATEGIC PRICING MATRIX -->
+      <section id="section-services" class="content-section">
+        <div class="section-header">
+          <h2>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            5-Service Pricing Strategy & Margin Multipliers
+          </h2>
+          <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics & elasticity benchmarks</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+          <!-- Service 1: Dog Walking -->
+          <div class="card service-strategy-card">
+            <div class="service-strategy-header">
+              <div class="service-strategy-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">🦮</div>
+              <div>
+                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Dog Walking</h4>
+                <span class="service-multiplier-tag" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Base Anchor (1.0×)</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> 30 or 60 min walk &bull; <strong>Elasticity:</strong> High ($|\epsilon| > 1.2$)</p>
+            <div class="service-rate-calc">
+              <span>Benchmark Rate:</span>
+              <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$20 - $30</strong>
+            </div>
+            <div class="service-tactics">
+              <p>🎯 <strong>Strategy:</strong> Volume & Route Density. Keep base price competitive with market median, and cluster walks geographically in a 1.5km zone to minimize unpaid commute transit.</p>
+            </div>
+          </div>
+
+          <!-- Service 2: Drop-In Visits -->
+          <div class="card service-strategy-card">
+            <div class="service-strategy-header">
+              <div class="service-strategy-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">🏠</div>
+              <div>
+                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Drop-In Visits</h4>
+                <span class="service-multiplier-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.3);">0.9× – 1.1× Base</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min home check-in &bull; <strong>Elasticity:</strong> Moderate ($|\epsilon| \approx 1.0$)</p>
+            <div class="service-rate-calc">
+              <span>Benchmark Rate:</span>
+              <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$18 - $28</strong>
+            </div>
+            <div class="service-tactics">
+              <p>🎯 <strong>Strategy:</strong> Multi-Pet Upsell. Base rate matches walking, but add-on pets (+$10-15/cat or extra dog) drive 80%+ profit margins with near-zero additional travel overhead.</p>
+            </div>
+          </div>
+
+          <!-- Service 3: Overnight Boarding -->
+          <div class="card service-strategy-card">
+            <div class="service-strategy-header">
+              <div class="service-strategy-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">🏡</div>
+              <div>
+                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Overnight Boarding</h4>
+                <span class="service-multiplier-tag" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">1.8× – 2.5× Base</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (in your home) &bull; <strong>Elasticity:</strong> Low ($|\epsilon| < 0.8$)</p>
+            <div class="service-rate-calc">
+              <span>Benchmark Rate:</span>
+              <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$45 - $75</strong>
+            </div>
+            <div class="service-tactics">
+              <p>🎯 <strong>Strategy:</strong> Capacity Monetization. Boarding is limited by home capacity (1-2 pets). Price high with premium trust signaling and enforce a +35% holiday surge multiplier.</p>
+            </div>
+          </div>
+
+          <!-- Service 4: House Sitting -->
+          <div class="card service-strategy-card">
+            <div class="service-strategy-header">
+              <div class="service-strategy-icon" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🛋️</div>
+              <div>
+                <h4 style="margin: 0; font-size: 1rem; color: #fff;">House Sitting</h4>
+                <span class="service-multiplier-tag" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);">2.2× – 3.2× Base</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (in owner's home) &bull; <strong>Elasticity:</strong> Very Inelastic ($|\epsilon| < 0.6$)</p>
+            <div class="service-rate-calc">
+              <span>Benchmark Rate:</span>
+              <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$60 - $100+</strong>
+            </div>
+            <div class="service-tactics">
+              <p>🎯 <strong>Strategy:</strong> Time Exclusivity Premium. Because you cannot take overlapping house sits, charge top-dollar. Ideal for digital nomads and remote professionals who work from the client's home.</p>
+            </div>
+          </div>
+
+          <!-- Service 5: Day Care -->
+          <div class="card service-strategy-card">
+            <div class="service-strategy-header">
+              <div class="service-strategy-icon" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">☀️</div>
+              <div>
+                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Doggy Day Care</h4>
+                <span class="service-multiplier-tag" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">1.4× – 1.9× Base</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Full Day (8am - 6pm) &bull; <strong>Elasticity:</strong> Moderate ($|\epsilon| \approx 1.0$)</p>
+            <div class="service-rate-calc">
+              <span>Benchmark Rate:</span>
+              <strong id="serviceRateDayCare" style="color: #c084fc; font-size: 1.1rem;">$32 - $50</strong>
+            </div>
+            <div class="service-tactics">
+              <p>🎯 <strong>Strategy:</strong> Recurring Retention. Offer 5-day / month-long pass bundles. Predictable recurring cashflow offsets the slight per-day discount vs. one-off drop-ins.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -512,6 +640,79 @@
         </div>
 
       </div><!-- /grid -->
+    </section>
+
+    <!-- SECTION 8: DATA SCIENCE & ECONOMETRICS WIKI -->
+    <section id="section-glossary" class="content-section">
+      <div class="section-header">
+        <h2>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          Data Science & Econometrics Encyclopedia
+        </h2>
+        <span style="font-size: 0.82rem; color: #a7f3d0; background: rgba(52, 211, 153, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(52, 211, 153, 0.3);">Technical foundations, formulas & Wikipedia citations</span>
+      </div>
+
+      <div class="wiki-grid">
+        <!-- Wiki Term 1 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Survival_function" target="_blank" rel="noopener noreferrer" class="wiki-link">Empirical Survival Function (ESF) ↗</a></h3>
+            <span class="wiki-tag">Econometrics</span>
+          </div>
+          <p>In market economics, the survival function $S(P) = \mathbb{P}(\text{Price} \ge P)$ models the probability that a buyer chooses a given seller over available market alternatives. In this app, we compute an empirical, continuous survival curve smoothed via Gaussian kernels to estimate hiring probability at every candidate price point.</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator" target="_blank" rel="noopener">Kaplan–Meier Estimator</a> &bull; <a href="https://en.wikipedia.org/wiki/Cumulative_distribution_function" target="_blank" rel="noopener">Complementary CDF</a></div>
+        </div>
+
+        <!-- Wiki Term 2 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Price_elasticity_of_demand" target="_blank" rel="noopener noreferrer" class="wiki-link">Price Elasticity of Demand (PED) ↗</a></h3>
+            <span class="wiki-tag">Microeconomics</span>
+          </div>
+          <p>Measures the responsiveness of booking quantity/probability to a change in price: $\epsilon = \frac{\% \Delta Q}{\% \Delta P} = \frac{P}{Q}\frac{dQ}{dP}$. When $|\epsilon| < 1$ (inelastic), price increases boost revenue. When $|\epsilon| > 1$ (elastic), price increases reduce revenue. Total expected revenue is maximized at the <strong>Unitary Elasticity Point ($|\epsilon| = 1.0$)</strong>.</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Marginal_revenue" target="_blank" rel="noopener">Marginal Revenue</a> &bull; <a href="https://en.wikipedia.org/wiki/Total_revenue_test" target="_blank" rel="noopener">Total Revenue Test</a></div>
+        </div>
+
+        <!-- Wiki Term 3 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Interquartile_range" target="_blank" rel="noopener noreferrer" class="wiki-link">Interquartile Range (IQR) & Outlier Fences ↗</a></h3>
+            <span class="wiki-tag">Descriptive Statistics</span>
+          </div>
+          <p>A non-parametric measure of statistical dispersion representing the spread of the middle 50% of values: $\text{IQR} = Q_3 - Q_1$. John Tukey defined outlier fences at $[Q_1 - 1.5\cdot\text{IQR}, \; Q_3 + 1.5\cdot\text{IQR}]$, which we apply in the Outlier Studio to flag distorted price rates without making normal distribution assumptions.</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Outlier#Tukey's_fences" target="_blank" rel="noopener">Tukey's Fences</a> &bull; <a href="https://en.wikipedia.org/wiki/Box_plot" target="_blank" rel="noopener">Box Plots</a></div>
+        </div>
+
+        <!-- Wiki Term 4 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Kernel_density_estimation" target="_blank" rel="noopener noreferrer" class="wiki-link">Kernel Density Estimation (KDE) ↗</a></h3>
+            <span class="wiki-tag">Non-Parametric Estimation</span>
+          </div>
+          <p>A statistical technique for estimating the continuous probability density function (PDF) of price variables. Unlike discrete histograms that depend on arbitrary bin intervals, KDE applies smooth Gaussian kernels $\hat{f}_h(x) = \frac{1}{nh}\sum K\left(\frac{x-x_i}{h}\right)$ using Silverman's rule of thumb bandwidth $h = 1.06\hat{\sigma}n^{-1/5}$.</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Kernel_density_estimation#Bandwidth_selection" target="_blank" rel="noopener">Silverman's Bandwidth</a> &bull; <a href="https://en.wikipedia.org/wiki/Gaussian_function" target="_blank" rel="noopener">Gaussian Kernel</a></div>
+        </div>
+
+        <!-- Wiki Term 5 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Truncated_mean" target="_blank" rel="noopener noreferrer" class="wiki-link">Trimmed Mean (Truncated Mean) ↗</a></h3>
+            <span class="wiki-tag">Robust Statistics</span>
+          </div>
+          <p>A statistical measure of central tendency calculated by discarding a fixed percentage (e.g. 10%) of the lowest and highest values before computing the arithmetic average. It offers a balance between the median (highly robust but loses magnitude info) and the mean (vulnerable to severe skew).</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/Robust_statistics" target="_blank" rel="noopener">Robust Statistics</a> &bull; <a href="https://en.wikipedia.org/wiki/Winsorized_mean" target="_blank" rel="noopener">Winsorized Mean</a></div>
+        </div>
+
+        <!-- Wiki Term 6 -->
+        <div class="card wiki-card">
+          <div class="wiki-card-header">
+            <h3><a href="https://en.wikipedia.org/wiki/Server-sent_events" target="_blank" rel="noopener noreferrer" class="wiki-link">Server-Sent Events (SSE) ↗</a></h3>
+            <span class="wiki-tag">Web Engineering</span>
+          </div>
+          <p>A W3C standard protocol enabling servers to push asynchronous, unidirectional text event streams to web clients over HTTP (`text/event-stream`). Used in this platform to stream live Playwright scraping logs and page-by-page progress in real-time without polling overhead.</p>
+          <div class="wiki-citation">Related Wikipedia articles: <a href="https://en.wikipedia.org/wiki/WebSocket" target="_blank" rel="noopener">WebSockets</a> &bull; <a href="https://en.wikipedia.org/wiki/Push_technology" target="_blank" rel="noopener">HTTP Push Technology</a></div>
+        </div>
+      </div>
     </section>
   </div>
 

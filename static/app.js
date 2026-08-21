@@ -22,6 +22,7 @@ let sitterMarkersMap = new Map();
 
 document.addEventListener("DOMContentLoaded", () => {
     setupSidebarNavigation();
+    setupCollapsibleTable();
     loadServices();
     loadHistory();
     loadTemporalTrends();
@@ -301,18 +302,63 @@ function renderResults(stats, records, location, service, sessionId, centerLat, 
         document.getElementById("iqrBoundsLabel").textContent = `$${stats.outlier_bounds.lower} to $${stats.outlier_bounds.upper}`;
     }
 
-    // Setup Export Link
+    // Setup Export Link & Sitter Count
     const csvBtn = document.getElementById("exportCsvBtn");
     if (csvBtn && sessionId) {
         csvBtn.href = `/api/export/csv/${sessionId}`;
         csvBtn.style.display = "inline-flex";
     }
+    const countBadge = document.getElementById("sittersCountBadge");
+    if (countBadge) {
+        countBadge.textContent = `${records ? records.length : 0} Sitters`;
+    }
+
+    // Update 5-Service Strategic Rate Benchmarks
+    updateServiceRateBenchmarks(stats);
 
     // Render Components
     renderHeatmap(records || [], centerLat, centerLng, stats);
     renderPriceChart(stats.price_distribution || []);
     renderRatingScatter(records || []);
     renderTable(records || []);
+}
+
+// Helper: Dynamically compute 5-service benchmark rates based on local base rate
+function updateServiceRateBenchmarks(stats) {
+    const baseRate = stats.median_price || stats.avg_price || 25.0;
+    
+    const elDogWalking = document.getElementById("serviceRateDogWalking");
+    const elDropIns = document.getElementById("serviceRateDropIns");
+    const elBoarding = document.getElementById("serviceRateBoarding");
+    const elHouseSitting = document.getElementById("serviceRateHouseSitting");
+    const elDayCare = document.getElementById("serviceRateDayCare");
+
+    if (elDogWalking) elDogWalking.textContent = `$${Math.round(baseRate * 0.9)} - $${Math.round(baseRate * 1.15)}`;
+    if (elDropIns) elDropIns.textContent = `$${Math.round(baseRate * 0.88)} - $${Math.round(baseRate * 1.05)}`;
+    if (elBoarding) elBoarding.textContent = `$${Math.round(baseRate * 1.85)} - $${Math.round(baseRate * 2.45)}`;
+    if (elHouseSitting) elHouseSitting.textContent = `$${Math.round(baseRate * 2.25)} - $${Math.round(baseRate * 3.20)}`;
+    if (elDayCare) elDayCare.textContent = `$${Math.round(baseRate * 1.40)} - $${Math.round(baseRate * 1.85)}`;
+}
+
+// Collapsible Sitter Listings Table Setup
+function setupCollapsibleTable() {
+    const toggleBtn = document.getElementById("btnToggleSittersTable");
+    const wrapper = document.getElementById("sittersCollapsibleWrapper");
+    const toggleText = document.getElementById("sittersToggleText");
+    const toggleIcon = document.getElementById("sittersToggleIcon");
+
+    if (!toggleBtn || !wrapper) return;
+
+    toggleBtn.addEventListener("click", () => {
+        const isCollapsed = wrapper.classList.toggle("collapsed");
+        if (isCollapsed) {
+            toggleText.textContent = "Expand Table";
+            toggleIcon.style.transform = "rotate(180deg)";
+        } else {
+            toggleText.textContent = "Collapse Table";
+            toggleIcon.style.transform = "rotate(0deg)";
+        }
+    });
 }
 
 // 7. Render Revenue Optimization Chart (Price vs. Conversion & Expected Revenue)
