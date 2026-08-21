@@ -157,13 +157,23 @@
         <div class="card">
           <h3 class="card-title">Search Parameters</h3>
           <form id="scraperForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label" for="platformSelect">Marketplace Platform</label>
+                <select id="platformSelect" class="form-select">
+                  <option value="rover" selected>🐾 Rover.com (Market Leader)</option>
+                  <option value="wag">⚡ Wag! Walking (On-Demand)</option>
+                  <option value="care">🛡️ Care.com Pet Care (Verified)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="serviceSelect">Service Category</label>
+                <select id="serviceSelect" class="form-select"></select>
+              </div>
+            </div>
             <div class="form-group">
               <label class="form-label" for="locationInput">Center Location / Postal Code</label>
               <input type="text" id="locationInput" class="form-input" placeholder="e.g. Downtown Toronto, ON" value="Downtown Toronto, ON" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="serviceSelect">Service Category</label>
-              <select id="serviceSelect" class="form-select"></select>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
               <div class="form-group">
