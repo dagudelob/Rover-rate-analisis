@@ -833,3 +833,173 @@ function escapeHtml(str) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+// ========================================
+// Data Science Academy — Interactive Demos
+// ========================================
+
+let kdeChartInstance = null;
+
+/** Parses a comma-separated string of numbers into a sorted array. */
+function parseNumberList(str) {
+    return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
+}
+
+/** Demo 1: IQR Outlier Detection — runs entirely in JS */
+function runIQRDemo() {
+    const raw = document.getElementById('iqrInput').value;
+    const prices = parseNumberList(raw);
+    if (prices.length < 4) {
+        document.getElementById('iqrResult').textContent = 'Need at least 4 prices.';
+        return;
+    }
+
+    const n = prices.length;
+    const q1 = prices[Math.floor(n * 0.25)];
+    const q3 = prices[Math.ceil(n * 0.75) - 1] ?? prices[n - 1];
+    const iqr = q3 - q1;
+    const lower = +(q1 - 1.5 * iqr).toFixed(2);
+    const upper = +(q3 + 1.5 * iqr).toFixed(2);
+    const outliers = prices.filter(p => p < lower || p > upper);
+    const clean = prices.filter(p => p >= lower && p <= upper);
+    const avg = +(clean.reduce((a, b) => a + b, 0) / clean.length).toFixed(2);
+
+    document.getElementById('iqrResult').textContent =
+        `Q1 = $${q1}  |  Q3 = $${q3}  |  IQR = $${iqr.toFixed(2)}
+` +
+        `Safe Bounds: [$${lower} — $${upper}]
+` +
+        `Outliers detected (${outliers.length}): ${outliers.map(p => '$' + p).join(', ') || 'None'}
+` +
+        `Clean prices (${clean.length}): ${clean.map(p => '$' + p).join(', ')}
+` +
+        `Mean after filtering: $${avg}`;
+}
+
+/** Demo 2: Expected Value / Revenue Index optimizer */
+function runEVIDemo() {
+    const mean = parseFloat(document.getElementById('eviMean').value) || 22;
+    const std = parseFloat(document.getElementById('eviStd').value) || 7;
+    const candidates = Array.from({length: 40}, (_, i) => mean - 2.5 * std + i * (5 * std / 40));
+    
+    let bestPrice = mean;
+    let bestEVI = -1;
+
+    const points = candidates.map(p => {
+        const z = (p - mean) / std;
+        const prob = 1 / (1 + Math.exp(1.2 * z));
+        const evi = p * prob;
+        if (evi > bestEVI) { bestEVI = evi; bestPrice = p; }
+        return { p: +p.toFixed(1), prob: +(prob * 100).toFixed(1), evi: +evi.toFixed(2) };
+    });
+
+    const nearBest = points.filter(pt => Math.abs(pt.p - bestPrice) < 2.5);
+    document.getElementById('eviResult').textContent =
+        `Optimal Price (Sweet Spot): $${bestPrice.toFixed(1)}
+` +
+        `Max Revenue Index: ${bestEVI.toFixed(2)} (price × conversion prob.)
+` +
+        `Recommended range: $${(bestPrice * 0.90).toFixed(1)} — $${(bestPrice * 1.12).toFixed(1)}
+` +
+        `At that price, booking probability ≈ ${nearBest[0]?.prob ?? '--'}%`;
+}
+
+/** Demo 3: Gaussian KDE on active sitter prices */
+function runKDEDemo() {
+    const h = parseFloat(document.getElementById('kdeBandwidth').value) || 3;
+
+    const prices = currentRecords
+        .filter((r, i) => !currentExcludedIndices.has(i) && r.price_numeric !== null)
+        .map(r => r.price_numeric);
+
+    if (prices.length < 3) {
+        alert('Load a search session first — need at least 3 active sitters.');
+        return;
+    }
+
+    const minP = Math.min(...prices) - h * 2;
+    const maxP = Math.max(...prices) + h * 2;
+    const steps = 60;
+    const xVals = Array.from({length: steps}, (_, i) => minP + (i / (steps - 1)) * (maxP - minP));
+
+    // Gaussian KDE kernel: K(u) = (1/sqrt(2π)) * exp(-0.5 * u²)
+    const kdeVals = xVals.map(x => {
+        const density = prices.reduce((sum, xi) => {
+            const u = (x - xi) / h;
+            return sum + Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+        }, 0) / (prices.length * h);
+        return +density.toFixed(6);
+    });
+
+    const ctx = document.getElementById('kdeChart').getContext('2d');
+    if (kdeChartInstance) kdeChartInstance.destroy();
+
+    kdeChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: xVals.map(x => '$' + x.toFixed(0)),
+            datasets: [{
+                label: 'Price Density (KDE)',
+                data: kdeVals,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#9ca3af', maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#9ca3af' }, title: { display: true, text: 'Density', color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+}
+
+/** Demo 4: 1-D K-Means clustering on sitter prices */
+function runKMeansDemo() {
+    const K = parseInt(document.getElementById('kmeansK').value) || 3;
+    const prices = currentRecords
+        .filter((r, i) => !currentExcludedIndices.has(i) && r.price_numeric !== null)
+        .map(r => r.price_numeric);
+
+    if (prices.length < K) {
+        alert('Not enough sitters loaded. Run a search first.');
+        return;
+    }
+
+    // Initialize centroids by spreading evenly across price range
+    const sorted = [...prices].sort((a, b) => a - b);
+    let centroids = Array.from({length: K}, (_, i) => sorted[Math.floor(i * sorted.length / K)]);
+
+    let clusters;
+    for (let iter = 0; iter < 50; iter++) {
+        // Assign each price to nearest centroid
+        clusters = Array.from({length: K}, () => []);
+        prices.forEach(p => {
+            const nearest = centroids.reduce((best, c, i) =>
+                Math.abs(p - c) < Math.abs(p - centroids[best]) ? i : best, 0);
+            clusters[nearest].push(p);
+        });
+        // Update centroids
+        const newCentroids = clusters.map(cl =>
+            cl.length > 0 ? cl.reduce((a, b) => a + b, 0) / cl.length : 0);
+        if (newCentroids.every((c, i) => Math.abs(c - centroids[i]) < 0.01)) break;
+        centroids = newCentroids;
+    }
+
+    const clusterNames = ['Budget', 'Mid-Tier', 'Premium', 'Ultra-Premium', 'Luxury', 'Elite'];
+    const sorted_clusters = clusters
+        .map((cl, i) => ({ name: clusterNames[i] || `Cluster ${i + 1}`, prices: cl.sort((a, b) => a - b), centroid: centroids[i] }))
+        .sort((a, b) => a.centroid - b.centroid)
+        .map((cl, i) => ({ ...cl, name: clusterNames[i] || cl.name }));
+
+    const lines = sorted_clusters.map(cl =>
+        `${cl.name.padEnd(14)} → Centroid: $${cl.centroid.toFixed(1)}  |  Range: $${cl.prices[0]?.toFixed(0)} – $${cl.prices[cl.prices.length-1]?.toFixed(0)}  |  n=${cl.prices.length} sitters`);
+
+    document.getElementById('kmeansResult').textContent = lines.join('\n');
+}

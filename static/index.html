@@ -81,6 +81,12 @@
               <span class="nav-text">Historical Archive</span>
             </a>
           </li>
+          <li>
+            <a href="#section-dsacademy" class="nav-link" style="color: #a78bfa;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+              <span class="nav-text">DS Academy</span>
+            </a>
+          </li>
         </ul>
       </nav>
     </div>
@@ -406,6 +412,106 @@
           <div id="historyList"></div>
         </div>
       </div>
+    </section>
+
+    <!-- SECTION 7: DATA SCIENCE ACADEMY -->
+    <section id="section-dsacademy" class="content-section">
+      <div class="section-header">
+        <h2>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+          Data Science Academy
+        </h2>
+        <span style="font-size: 0.82rem; color: #c4b5fd; background: rgba(139, 92, 246, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(139, 92, 246, 0.3);">Interactive examples of the techniques used in this platform</span>
+      </div>
+
+      <!-- Technique Cards Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+        <!-- Technique 1: IQR Outlier Detection -->
+        <div class="card ds-technique-card" id="ds-iqr">
+          <div class="ds-technique-header">
+            <span class="ds-badge" style="background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3);">01</span>
+            <h3>IQR Outlier Detection</h3>
+          </div>
+          <p class="ds-description">The <strong>Interquartile Range (IQR)</strong> identifies extreme price points that distort your statistical benchmarks. Any price below <em>Q1 - 1.5×IQR</em> or above <em>Q3 + 1.5×IQR</em> is classified as an outlier.</p>
+          <div class="ds-formula">IQR = Q3 - Q1 &nbsp;|&nbsp; Bounds: [Q1 - 1.5·IQR, &nbsp;Q3 + 1.5·IQR]</div>
+          <div class="ds-demo-area">
+            <div style="margin-bottom: 0.75rem;">
+              <label class="form-label" style="font-size:0.8rem;">Enter a comma-separated list of prices to analyze:</label>
+              <div style="display:flex; gap:0.5rem;">
+                <input id="iqrInput" class="form-input" style="font-size:0.85rem;" value="12, 15, 15, 18, 20, 22, 23, 25, 28, 55, 8" placeholder="e.g. 12, 15, 22, 55...">
+                <button onclick="runIQRDemo()" class="btn-filter-tag" style="white-space:nowrap;">▶ Run</button>
+              </div>
+            </div>
+            <div id="iqrResult" class="ds-result"></div>
+          </div>
+          <div class="ds-use-case">📌 Used in this app to auto-flag sitters with abnormal rates in the Outlier Studio.</div>
+        </div>
+
+        <!-- Technique 2: Revenue Maximizer (Expected Value Optimization) -->
+        <div class="card ds-technique-card" id="ds-evi">
+          <div class="ds-technique-header">
+            <span class="ds-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3);">02</span>
+            <h3>Revenue Maximizer (EVI)</h3>
+          </div>
+          <p class="ds-description">The <strong>Expected Value / Revenue Index</strong> finds the price that maximizes: Price × P(Being hired at that price). Higher prices earn more per job but reduce your booking probability.</p>
+          <div class="ds-formula">EVI(P) = P &times; P(hired | P) &nbsp;|&nbsp; P(hired) modeled via logistic curve on market distribution</div>
+          <div class="ds-demo-area">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <div>
+                <label class="form-label" style="font-size:0.8rem;">Market Mean Price ($)</label>
+                <input id="eviMean" class="form-input" style="font-size:0.85rem;" value="22" type="number">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.8rem;">Market Std Dev ($)</label>
+                <input id="eviStd" class="form-input" style="font-size:0.85rem;" value="7" type="number">
+              </div>
+            </div>
+            <button onclick="runEVIDemo()" class="btn-filter-tag" style="width:100%; justify-content:center;">▶ Compute Optimal Price</button>
+            <div id="eviResult" class="ds-result" style="margin-top:0.6rem;"></div>
+          </div>
+          <div class="ds-use-case">📌 Used in this app to compute the recommended pricing sweet spot in the Price Optimizer section.</div>
+        </div>
+
+        <!-- Technique 3: Kernel Density Estimation (KDE) -->
+        <div class="card ds-technique-card" id="ds-kde">
+          <div class="ds-technique-header">
+            <span class="ds-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3);">03</span>
+            <h3>Kernel Density Estimation (KDE)</h3>
+          </div>
+          <p class="ds-description">KDE estimates the <strong>smooth continuous probability distribution</strong> of market prices — unlike a histogram, it doesn't depend on arbitrary bin widths. It reveals hidden clusters (e.g. "budget" vs. "premium" sitters in the same area).</p>
+          <div class="ds-formula">f̂(x) = (1/n·h) · Σ K((x − xᵢ)/h) &nbsp;|&nbsp; K = Gaussian kernel, h = bandwidth</div>
+          <div class="ds-demo-area">
+            <label class="form-label" style="font-size:0.8rem;">Bandwidth (smoothing h):</label>
+            <input id="kdeBandwidth" class="form-input" style="font-size:0.85rem; margin-bottom:0.5rem;" value="3" type="number" min="1" max="15">
+            <button onclick="runKDEDemo()" class="btn-filter-tag" style="width:100%; justify-content:center; margin-bottom:0.75rem;">▶ Plot KDE on Current Data</button>
+            <div class="chart-wrapper" style="height:160px;">
+              <canvas id="kdeChart"></canvas>
+            </div>
+          </div>
+          <div class="ds-use-case">📌 Extension: Replace the histogram in Market Charts with a KDE curve for smoother density visualization.</div>
+        </div>
+
+        <!-- Technique 4: K-Means Geospatial Clustering -->
+        <div class="card ds-technique-card" id="ds-kmeans">
+          <div class="ds-technique-header">
+            <span class="ds-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3);">04</span>
+            <h3>K-Means Price Clustering</h3>
+          </div>
+          <p class="ds-description">Groups sitters into <strong>K price clusters</strong> (e.g. Budget / Mid-tier / Premium) using their rates. The algorithm iteratively reassigns each sitter to the nearest centroid, revealing natural market segments in your area.</p>
+          <div class="ds-formula">Minimize: Σᵢ Σⱼ ||xᵢ - μⱼ||² &nbsp;|&nbsp; μⱼ = cluster centroid (mean price)</div>
+          <div class="ds-demo-area">
+            <div style="margin-bottom: 0.75rem;">
+              <label class="form-label" style="font-size:0.8rem;">Number of clusters (K):</label>
+              <input id="kmeansK" class="form-input" style="font-size:0.85rem;" value="3" type="number" min="2" max="6">
+            </div>
+            <button onclick="runKMeansDemo()" class="btn-filter-tag" style="width:100%; justify-content:center;">▶ Cluster Current Sitters by Price</button>
+            <div id="kmeansResult" class="ds-result" style="margin-top:0.6rem;"></div>
+          </div>
+          <div class="ds-use-case">📌 Extension: Identify whether your local market is truly segmented and position yourself in the highest-value cluster.</div>
+        </div>
+
+      </div><!-- /grid -->
     </section>
   </div>
 

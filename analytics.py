@@ -56,10 +56,10 @@ def calculate_market_statistics(records: List[Dict[str, Any]], excluded_indices:
 
     trim_pct = 0.10
     if len(prices) >= 5:
-        lower_cut = prices.quantile(trim_pct)
-        upper_cut = prices.quantile(1.0 - trim_pct)
+        lower_cut = float(prices.quantile(trim_pct))
+        upper_cut = float(prices.quantile(1.0 - trim_pct))
         trimmed_prices = prices[(prices >= lower_cut) & (prices <= upper_cut)]
-        trimmed_mean = float(trimmed_prices.mean()) if not trimmed_prices.empty else float(prices.mean())
+        trimmed_mean = float(trimmed_prices.mean()) if len(trimmed_prices) > 0 else float(prices.mean())
     else:
         trimmed_mean = float(prices.mean())
 
