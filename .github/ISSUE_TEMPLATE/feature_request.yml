@@ -1,0 +1,67 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for Rover Market Intelligence.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thanks for suggesting a new feature!
+        Please fill out the sections below to help us understand the value and scope of your idea.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: ✅ Preflight Checklist
+      options:
+        - label: I searched existing issues and this feature has not been requested before.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 🧩 Feature Area
+      options:
+        - Scraper / Data Extraction
+        - Analytics & Statistics
+        - Visualization & Charts
+        - Sitter Listings UI
+        - Session History Management
+        - Data Science Academy
+        - API / Endpoints
+        - Performance & Caching
+        - Docker / Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🎯 Problem / Motivation
+      description: What problem does this solve? What is the use case?
+      placeholder: As a Rover sitter, I want to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: How should this feature work? Be as specific as possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔀 Alternatives Considered
+      description: Any other approaches you considered?
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 Additional Context
+      description: Screenshots, mockups, or links to similar implementations.

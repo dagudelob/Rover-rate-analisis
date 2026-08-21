@@ -1,0 +1,161 @@
+name: 🐛 Bug Report
+description: Report a reproducible bug or unexpected behavior in Rover Market Intelligence.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thank you for taking the time to file a bug report.
+
+        Please fill out each section below as completely as possible. Bug reports with detailed reproduction steps get resolved **much faster**.
+        Before submitting, please [search existing issues](../../issues) to avoid duplicates.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: ✅ Preflight Checklist
+      description: Please confirm these before submitting.
+      options:
+        - label: I searched for existing issues and this is not a duplicate.
+          required: true
+        - label: I can reliably reproduce this bug with the steps provided below.
+          required: true
+        - label: I am using the latest version of the application.
+          required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 🧩 Component Affected
+      description: Which part of the application is impacted?
+      multiple: false
+      options:
+        - Scraper / Data Extraction
+        - Analytics Engine (Statistics & Pricing Optimizer)
+        - Sitter Listings Table (Filtering / Sorting)
+        - Saved Search Sessions (History)
+        - Price Heatmap / Leaflet Map
+        - Dark Mode / Light Mode Theme
+        - Data Science Academy Section
+        - REST API / Backend Endpoints
+        - Database / SQLite Persistence
+        - Docker / Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🔥 Severity
+      description: How severely does this bug affect the application?
+      options:
+        - "Critical — Application is completely broken or data is corrupted"
+        - "High — Core feature is non-functional, no workaround"
+        - "Medium — Feature is degraded, workaround exists"
+        - "Low — Minor visual or cosmetic issue"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Bug Description
+      description: A clear and concise description of what the bug is. What did you expect to happen, and what actually happened?
+      placeholder: |
+        When scraping dog-walking services in [City], the price shown in the Sitter Listings table
+        shows "$2,000,000" (from the sitter's bio mentioning insurance), instead of the
+        actual dog-walking rate "$25 / walk".
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 🔁 Steps to Reproduce
+      description: Step-by-step instructions to reliably reproduce the bug.
+      placeholder: |
+        1. Open the app at http://localhost:8000
+        2. Enter location "Toronto, ON" in the search form
+        3. Select service type "Dog Walking"
+        4. Click "Start 100-Sitter Import"
+        5. Wait for scraping to complete
+        6. Scroll to Sitter Listings Table
+        7. Observe that sitter "John D." shows a rate of "$2,000,000"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Expected Behavior
+      description: What should have happened?
+      placeholder: The sitter's dog-walking rate should be "$25 / walk", not an insurance figure from their bio.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happened? Include any error messages, logs, or screenshots.
+      placeholder: The table shows "$2,000,000" as the sitter's rate.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 🪵 Logs / Console Output
+      description: |
+        Paste any relevant error messages from the browser console, terminal logs, or the scraper terminal output.
+        Tip: Right-click the page > Inspect > Console for browser errors.
+      render: shell
+      placeholder: |
+        [10:34:12] ERROR scraping price for sitter 'John D.': unexpected format
+        Traceback (most recent call last):
+          File "scraper.py", line 184, in extract_price
+            ...
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🖥️ Environment
+      description: Please fill out the environment details where the bug occurs.
+      value: |
+        - **OS**: [e.g. macOS 14.0, Ubuntu 22.04, Windows 11]
+        - **Browser**: [e.g. Chrome 125, Firefox 126, Safari 17]
+        - **Python Version**: [e.g. 3.12.3]
+        - **Running Mode**: [e.g. Local (`python main.py`), Docker, Hosted]
+        - **App Version / Commit**: [e.g. `main` @ `abc1234`]
+        - **Rover Location Searched**: [e.g. Toronto, ON]
+        - **Service Type**: [e.g. Dog Walking, Overnight Boarding]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: 📉 Is This a Regression?
+      description: Did this work correctly in a previous version and now it is broken?
+      options:
+        - "Yes — This used to work before"
+        - "No — This has never worked as expected"
+        - "Unknown"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 Additional Context
+      description: |
+        Add any other relevant context, screenshots, screen recordings, or links to related issues.
+        You can paste images directly into this field.
+      placeholder: |
+        - Related PR: #42
+        - Occurs only when the sitter bio contains dollar amounts
+        - Screenshot attached showing incorrect "$2,000,000" value

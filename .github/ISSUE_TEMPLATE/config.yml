@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 💬 Discussion / Questions
+    url: https://github.com/dagudelob/Rover-rate-analisis/discussions
+    about: Ask questions and discuss ideas about Rover Market Intelligence here.
+  - name: 📚 Documentation
+    url: https://github.com/dagudelob/Rover-rate-analisis/blob/main/README.md
+    about: Read the full README for setup instructions, API docs, and usage guide.
