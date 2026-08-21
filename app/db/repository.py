@@ -1,11 +1,10 @@
 """
 Data Access Layer — Repository pattern for all database CRUD operations.
 
-Rules:
-- All raw SQL lives here and only here
-- Functions accept typed Python arguments and return typed Python dicts/lists
-- No FastAPI, no HTTP, no business logic — pure data access
-- Routes and services call these functions; they never write SQL directly
+Clean 3-table relational architecture:
+1. search_sessions  (audit log & session statistical summaries)
+2. sitters          (master unique sitter profiles)
+3. sitter_services  (1-to-many rate matrix per sitter)
 """
 import logging
 from datetime import datetime
@@ -27,19 +26,34 @@ def get_all_sessions() -> List[Dict[str, Any]]:
 
 
 def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
-    """Returns a specific search session along with all its sitter listings."""
+    """Returns a specific search session along with all sitters and their services."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM search_sessions WHERE id = ?", (session_id,))
         session = cursor.fetchone()
         if not session:
             return None
-        cursor.execute(
-            "SELECT * FROM sitter_listings WHERE session_id = ? ORDER BY id ASC",
-            (session_id,)
-        )
+        
         result = dict(session)
-        result["sitters"] = [dict(s) for s in cursor.fetchall()]
+        # Fetch master sitters for this location
+        cursor.execute(
+            """
+            SELECT s.*
+            FROM sitters s
+            WHERE s.location = ?
+            ORDER BY s.rating DESC, s.reviews_count DESC
+            """,
+            (result["location"],)
+        )
+        sitters = [dict(s) for s in cursor.fetchall()]
+        for s in sitters:
+            cursor.execute(
+                "SELECT service_type, service_name, price_numeric, rate_unit, last_verified_at FROM sitter_services WHERE sitter_id = ? AND is_active = 1",
+                (s["id"],)
+            )
+            s["services"] = [dict(srv) for srv in cursor.fetchall()]
+        
+        result["sitters"] = sitters
         return result
 
 
@@ -55,7 +69,7 @@ def save_scrape_results(
     records: List[Dict[str, Any]],
 ) -> int:
     """
-    Saves a complete scrape session: metadata, aggregate stats, and all sitter listings.
+    Saves search session aggregates and automatically upserts sitters + services (ETL).
     Returns the newly created session_id.
     """
     now = datetime.now().isoformat()
@@ -84,56 +98,23 @@ def save_scrape_results(
         )
         session_id = cursor.lastrowid or 0
 
-        for r in records:
-            cursor.execute(
-                """
-                INSERT INTO sitter_listings (
-                    session_id, name, raw_price, price_numeric, rating, rating_numeric,
-                    reviews, reviews_count, headline, profile_url, photo_url, service_type,
-                    location_query, radius_km, lat, lng, service_radius_km, neighborhood, page,
-                    is_excluded, excluded_reason
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    session_id,
-                    r.get("name"),
-                    r.get("raw_price"),
-                    r.get("price_numeric"),
-                    r.get("rating"),
-                    r.get("rating_numeric"),
-                    r.get("reviews"),
-                    r.get("reviews_count"),
-                    r.get("headline"),
-                    r.get("profile_url"),
-                    r.get("photo_url"),
-                    r.get("service_type"),
-                    r.get("location_query"),
-                    r.get("radius_km"),
-                    r.get("lat"),
-                    r.get("lng"),
-                    r.get("service_radius_km"),
-                    r.get("neighborhood"),
-                    r.get("page"),
-                    1 if r.get("is_excluded") else 0,
-                    r.get("excluded_reason"),
-                ),
-            )
+    # Bulk upsert records into sitters and sitter_services tables
+    upsert_sitters_and_services_bulk(records, location, "rover")
 
-    logger.info("Saved session %d with %d sitters.", session_id, len(records))
+    logger.info("Saved search session %d with %d sitters.", session_id, len(records))
     return session_id
 
 
 def delete_session(session_id: int) -> bool:
-    """Deletes a single search session and its associated sitter listings."""
+    """Deletes a single search session from the audit table."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM sitter_listings WHERE session_id = ?", (session_id,))
         cursor.execute("DELETE FROM search_sessions WHERE id = ?", (session_id,))
         return cursor.rowcount > 0
 
 
 def delete_sessions(session_ids: List[int]) -> int:
-    """Batch-deletes multiple search sessions and their sitter listings."""
+    """Batch-deletes multiple search sessions."""
     if not session_ids:
         return 0
     placeholders = ",".join("?" for _ in session_ids)
@@ -141,27 +122,9 @@ def delete_sessions(session_ids: List[int]) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            f"DELETE FROM sitter_listings WHERE session_id IN ({placeholders})", ids_tuple
-        )
-        cursor.execute(
             f"DELETE FROM search_sessions WHERE id IN ({placeholders})", ids_tuple
         )
         return cursor.rowcount
-
-
-# ── Sitter Exclusion ───────────────────────────────────────────────────────────
-
-def update_sitter_exclusion(
-    sitter_id: int, is_excluded: bool, reason: Optional[str] = None
-) -> bool:
-    """Persists the outlier exclusion state of a specific sitter listing."""
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE sitter_listings SET is_excluded = ?, excluded_reason = ? WHERE id = ?",
-            (1 if is_excluded else 0, reason, sitter_id),
-        )
-        return cursor.rowcount > 0
 
 
 # ── Analytics Queries ──────────────────────────────────────────────────────────
@@ -183,40 +146,36 @@ def get_temporal_trends_data() -> List[Dict[str, Any]]:
 
 def get_master_historical_data() -> List[Dict[str, Any]]:
     """
-    Returns all sitter listings joined with session metadata for master CSV export.
+    Returns all sitters joined with their multi-service rates for master CSV export.
     """
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
             SELECT
-                s.id          AS session_id,
-                s.timestamp   AS session_date,
-                s.location    AS session_location,
-                s.service_type AS session_service,
-                s.radius_km   AS session_radius_km,
-                l.id          AS sitter_id,
-                l.name        AS sitter_name,
-                l.raw_price,
-                l.price_numeric,
-                l.rating,
-                l.reviews_count,
-                l.neighborhood,
-                l.lat,
-                l.lng,
-                l.service_radius_km,
-                l.profile_url,
-                l.is_excluded,
-                l.excluded_reason
-            FROM sitter_listings l
-            JOIN search_sessions s ON l.session_id = s.id
-            ORDER BY s.timestamp ASC, l.id ASC
+                s.id             AS sitter_id,
+                s.member_id,
+                s.name           AS sitter_name,
+                s.rating,
+                s.reviews_count,
+                s.location,
+                s.neighborhood,
+                s.profile_url,
+                s.first_scraped_at,
+                s.last_updated_at,
+                srv.service_type,
+                srv.service_name,
+                srv.price_numeric,
+                srv.rate_unit
+            FROM sitters s
+            LEFT JOIN sitter_services srv ON s.id = srv.sitter_id
+            ORDER BY s.last_updated_at DESC, s.name ASC
             """
         )
         return [dict(row) for row in cursor.fetchall()]
 
 
-# ── Bulk ETL Operations (Normalized Multi-Service Store) ────────────────────────
+# ── Normalized Multi-Service Store Operations ──────────────────────────────────
 
 def upsert_sitters_and_services_bulk(
     sitter_profiles: List[Dict[str, Any]],
@@ -224,10 +183,9 @@ def upsert_sitters_and_services_bulk(
     platform: str = "rover"
 ) -> Dict[str, int]:
     """
-    Executes a high-performance transactional batch insert/update:
-    1. Upserts unique sitters into the master 'sitters' table.
-    2. Upserts all associated service rates into 'sitter_services'.
-    Returns count of sitters and services processed.
+    Executes a high-performance batch upsert into the 2 core normalized tables:
+    1. Upserts unique sitters into 'sitters'.
+    2. Upserts each service rate into 'sitter_services'.
     """
     now = datetime.now().isoformat()
     sitters_count = 0
@@ -237,8 +195,9 @@ def upsert_sitters_and_services_bulk(
         cursor = conn.cursor()
 
         for s in sitter_profiles:
-            member_id = s.get("member_id") or s.get("profile_url", "").split("/members/")[-1].strip("/")
-            if not member_id:
+            profile_url = s.get("profile_url", "")
+            member_id = s.get("member_id") or profile_url.split("/members/")[-1].strip("/")
+            if not member_id or not profile_url:
                 continue
 
             # Upsert Sitter Profile
@@ -246,9 +205,9 @@ def upsert_sitters_and_services_bulk(
                 """
                 INSERT INTO sitters (
                     member_id, name, profile_url, headline, photo_url,
-                    rating, reviews_count, location, lat, lng, service_radius_km,
+                    rating, reviews_count, location, neighborhood,
                     platform, first_scraped_at, last_updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(member_id) DO UPDATE SET
                     name = excluded.name,
                     headline = excluded.headline,
@@ -256,23 +215,19 @@ def upsert_sitters_and_services_bulk(
                     rating = excluded.rating,
                     reviews_count = excluded.reviews_count,
                     location = excluded.location,
-                    lat = coalesce(excluded.lat, sitters.lat),
-                    lng = coalesce(excluded.lng, sitters.lng),
-                    service_radius_km = coalesce(excluded.service_radius_km, sitters.service_radius_km),
+                    neighborhood = coalesce(excluded.neighborhood, sitters.neighborhood),
                     last_updated_at = excluded.last_updated_at
                 """,
                 (
                     member_id,
                     s.get("name", "Rover Sitter"),
-                    s.get("profile_url", ""),
+                    profile_url,
                     s.get("headline"),
                     s.get("photo_url"),
                     s.get("rating_numeric") or 5.0,
                     s.get("reviews_count") or 0,
                     location,
-                    s.get("lat"),
-                    s.get("lng"),
-                    s.get("service_radius_km"),
+                    s.get("neighborhood") or location,
                     platform,
                     now,
                     now
@@ -280,14 +235,14 @@ def upsert_sitters_and_services_bulk(
             )
             sitters_count += 1
 
-            # Fetch the sitter ID
+            # Fetch the sitter DB ID
             cursor.execute("SELECT id FROM sitters WHERE member_id = ?", (member_id,))
             row = cursor.fetchone()
             if not row:
                 continue
             sitter_db_id = row["id"]
 
-            # Upsert each service rate offered by this sitter
+            # Upsert each real service rate offered by this sitter
             services = s.get("services", [])
             for srv in services:
                 srv_type = srv.get("service_type")
@@ -319,7 +274,7 @@ def upsert_sitters_and_services_bulk(
                 )
                 services_count += 1
 
-    logger.info("ETL Bulk Upsert Complete: %d sitters, %d service prices.", sitters_count, services_count)
+    logger.info("Bulk Upsert: %d sitters, %d service prices.", sitters_count, services_count)
     return {"sitters_upserted": sitters_count, "services_upserted": services_count}
 
 
@@ -331,7 +286,7 @@ def get_all_normalized_sitters_with_services() -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, member_id, name, profile_url, headline, photo_url,
-                   rating, reviews_count, location, lat, lng, platform, last_updated_at
+                   rating, reviews_count, location, neighborhood, platform, last_updated_at
             FROM sitters
             ORDER BY rating DESC, reviews_count DESC
         """)
@@ -347,4 +302,3 @@ def get_all_normalized_sitters_with_services() -> List[Dict[str, Any]]:
             s["services"] = [dict(r) for r in cursor.fetchall()]
 
         return sitters
-

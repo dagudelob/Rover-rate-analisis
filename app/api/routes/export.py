@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/export", tags=["Export"])
 
 @router.get("/csv/{session_id}")
 async def export_csv(session_id: int):
-    """Generates a CSV file download containing all sitter listings for a specific search session."""
+    """Generates a CSV file download containing all sitters for a specific search session."""
     session = get_session_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -32,30 +32,20 @@ async def export_csv(session_id: int):
     writer = csv.writer(output)
 
     writer.writerow([
-        "ID", "Name", "Raw_Price", "Price_Numeric", "Rating",
-        "Review_Count", "Headline", "Neighborhood", "Latitude", "Longitude", "Service_Radius_KM",
-        "Service_Type", "Location_Query", "Page", "Profile_URL", "Is_Excluded", "Excluded_Reason"
+        "ID", "Name", "Rating", "Review_Count", "Headline", "Neighborhood",
+        "Profile_URL", "Last_Updated_At"
     ])
 
     for s in sitters:
         writer.writerow([
             s.get("id"),
             s.get("name"),
-            s.get("raw_price"),
-            s.get("price_numeric"),
             s.get("rating"),
             s.get("reviews_count"),
             s.get("headline"),
             s.get("neighborhood"),
-            s.get("lat"),
-            s.get("lng"),
-            s.get("service_radius_km"),
-            s.get("service_type"),
-            s.get("location_query"),
-            s.get("page"),
             s.get("profile_url"),
-            s.get("is_excluded"),
-            s.get("excluded_reason")
+            s.get("last_updated_at")
         ])
 
     output.seek(0)
@@ -73,39 +63,34 @@ async def export_csv(session_id: int):
 @router.get("/master-csv")
 async def export_master_csv():
     """
-    Exports ALL historical search sessions and sitters into a master timestamped CSV archive.
+    Exports ALL historical sitters and their multi-service rates into a master CSV archive.
     """
     rows = get_master_historical_data()
     output = io.StringIO()
     writer = csv.writer(output)
 
     writer.writerow([
-        "Session_ID", "Session_Date_ISO", "Session_Location", "Service_Type", "Search_Radius_KM",
-        "Sitter_ID", "Sitter_Name", "Raw_Price", "Price_Numeric", "Rating",
-        "Review_Count", "Neighborhood", "Latitude", "Longitude", "Service_Radius_KM", "Profile_URL",
-        "Is_Excluded", "Excluded_Reason"
+        "Sitter_ID", "Member_ID", "Sitter_Name", "Rating", "Review_Count",
+        "Location", "Neighborhood", "Service_Type", "Service_Name", "Price_Numeric",
+        "Rate_Unit", "Profile_URL", "First_Scraped_At", "Last_Updated_At"
     ])
 
     for r in rows:
         writer.writerow([
-            r.get("session_id"),
-            r.get("session_date"),
-            r.get("session_location"),
-            r.get("session_service"),
-            r.get("session_radius_km"),
             r.get("sitter_id"),
+            r.get("member_id"),
             r.get("sitter_name"),
-            r.get("raw_price"),
-            r.get("price_numeric"),
             r.get("rating"),
             r.get("reviews_count"),
+            r.get("location"),
             r.get("neighborhood"),
-            r.get("lat"),
-            r.get("lng"),
-            r.get("service_radius_km"),
+            r.get("service_type"),
+            r.get("service_name"),
+            r.get("price_numeric"),
+            r.get("rate_unit"),
             r.get("profile_url"),
-            r.get("is_excluded"),
-            r.get("excluded_reason")
+            r.get("first_scraped_at"),
+            r.get("last_updated_at")
         ])
 
     output.seek(0)

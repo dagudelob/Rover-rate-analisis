@@ -1,13 +1,12 @@
 """
 Database schema initialization.
 
-Handles:
-- Table creation (CREATE TABLE IF NOT EXISTS)
-- Index creation for query performance
-- Forward-compatible schema migrations via PRAGMA table_info
+Defines the 3 core normalized tables:
+1. search_sessions  - Audit history & aggregate statistical snapshots
+2. sitters          - Master unique sitter profiles (member_id, name, neighborhood, rating, etc.)
+3. sitter_services  - 1-to-many normalized service rates per sitter
 """
 import logging
-
 from app.db.connection import get_db
 
 logger = logging.getLogger("rover.db.schema")
@@ -15,14 +14,13 @@ logger = logging.getLogger("rover.db.schema")
 
 def init_db() -> None:
     """
-    Initializes the database schema and performance indexes.
+    Initializes the simplified 3-table database schema and performance indexes.
     Safe to call on every startup — all statements use IF NOT EXISTS.
-    Also applies forward-compatible column migrations for older databases.
     """
     with get_db() as conn:
         cursor = conn.cursor()
 
-        # ── Search Sessions ────────────────────────────────────────────────────
+        # ── 1. Search Sessions (Audit History & Aggregates) ──────────────────────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS search_sessions (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,36 +42,7 @@ def init_db() -> None:
         )
         """)
 
-        # ── Sitter Listings (Search Session Snapshot) ──────────────────────────
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS sitter_listings (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id       INTEGER NOT NULL,
-            name             TEXT,
-            raw_price        TEXT,
-            price_numeric    REAL,
-            rating           TEXT,
-            rating_numeric   REAL,
-            reviews          TEXT,
-            reviews_count    INTEGER,
-            headline         TEXT,
-            profile_url      TEXT,
-            photo_url        TEXT,
-            service_type     TEXT,
-            location_query   TEXT,
-            radius_km        REAL,
-            lat              REAL,
-            lng              REAL,
-            service_radius_km REAL,
-            neighborhood     TEXT,
-            page             INTEGER,
-            is_excluded      INTEGER DEFAULT 0,
-            excluded_reason  TEXT,
-            FOREIGN KEY (session_id) REFERENCES search_sessions(id) ON DELETE CASCADE
-        )
-        """)
-
-        # ── Normalized Master Sitter Profiles (1 Row per Unique Sitter) ─────────
+        # ── 2. Normalized Master Sitter Profiles (1 Row per Unique Sitter) ───────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sitters (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,16 +54,14 @@ def init_db() -> None:
             rating           REAL    DEFAULT 5.0,
             reviews_count    INTEGER DEFAULT 0,
             location         TEXT,
-            lat              REAL,
-            lng              REAL,
-            service_radius_km REAL,
+            neighborhood     TEXT,
             platform         TEXT    DEFAULT 'rover',
             first_scraped_at TEXT    NOT NULL,
             last_updated_at  TEXT    NOT NULL
         )
         """)
 
-        # ── Normalized Sitter Services & Prices (Multi-Service Rate Table) ──────
+        # ── 3. Normalized Sitter Services & Real Prices (Multi-Service Rate Table) ─
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sitter_services (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,39 +77,18 @@ def init_db() -> None:
         )
         """)
 
-        # ── Batch ETL Audit Runs ───────────────────────────────────────────────
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS etl_runs (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            started_at       TEXT    NOT NULL,
-            completed_at     TEXT,
-            location         TEXT    NOT NULL,
-            platforms        TEXT    NOT NULL,
-            total_sitters_processed INTEGER DEFAULT 0,
-            total_services_extracted INTEGER DEFAULT 0,
-            status           TEXT    DEFAULT 'running',
-            error_message    TEXT
-        )
-        """)
+        # ── Forward-Compatible Column Migrations on sitters before index creation ─
+        cursor.execute("PRAGMA table_info(sitters)")
+        columns = {row["name"] for row in cursor.fetchall()}
+        if "neighborhood" not in columns:
+            cursor.execute("ALTER TABLE sitters ADD COLUMN neighborhood TEXT")
+            logger.info("Migration applied: added neighborhood column to sitters table")
 
-        # ── Indexes ────────────────────────────────────────────────────────────
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_session   ON sitter_listings(session_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_price     ON sitter_listings(price_numeric)")
+        # ── Performance Indexes ───────────────────────────────────────────────────
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_timestamp ON search_sessions(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_member_id ON sitters(member_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_neighborhood ON sitters(neighborhood)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_fk ON sitter_services(sitter_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_type ON sitter_services(service_type)")
 
-        # ── Forward-Compatible Migrations ──────────────────────────────────────
-        cursor.execute("PRAGMA table_info(sitter_listings)")
-        columns = {row["name"] for row in cursor.fetchall()}
-
-        if "is_excluded" not in columns:
-            cursor.execute("ALTER TABLE sitter_listings ADD COLUMN is_excluded INTEGER DEFAULT 0")
-            logger.info("Migration applied: added is_excluded column")
-
-        if "excluded_reason" not in columns:
-            cursor.execute("ALTER TABLE sitter_listings ADD COLUMN excluded_reason TEXT")
-            logger.info("Migration applied: added excluded_reason column")
-
-    logger.info("Database schema, normalized tables, and indexes initialized successfully.")
+    logger.info("Database schema initialized with 3 clean tables: search_sessions, sitters, sitter_services.")

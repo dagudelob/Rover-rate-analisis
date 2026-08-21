@@ -5,12 +5,13 @@ from app.db.connection import get_db
 from app.db.schema import init_db
 from app.db.repository import (
     save_scrape_results,
-    update_sitter_exclusion,
     get_all_sessions,
     get_session_by_id,
     get_master_historical_data,
     delete_session,
     delete_sessions,
+    upsert_sitters_and_services_bulk,
+    get_all_normalized_sitters_with_services,
 )
 
 def test_database_lifecycle_and_schema():
@@ -20,7 +21,8 @@ def test_database_lifecycle_and_schema():
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {row["name"] for row in cursor.fetchall()}
         assert "search_sessions" in tables
-        assert "sitter_listings" in tables
+        assert "sitters" in tables
+        assert "sitter_services" in tables
 
 def test_save_and_retrieve_session():
     init_db()
@@ -40,10 +42,9 @@ def test_save_and_retrieve_session():
             "service_type": "dog-walking",
             "location_query": "Toronto, ON",
             "radius_km": 5.0,
-            "lat": 43.6532,
-            "lng": -79.3832,
-            "service_radius_km": 2.5,
-            "page": 1
+            "services": [
+                {"service_type": "dog-walking", "service_name": "Dog Walking", "price_numeric": 25.0, "rate_unit": "per walk"}
+            ]
         }
     ]
     sample_stats = {
@@ -70,27 +71,13 @@ def test_save_and_retrieve_session():
     session = get_session_by_id(session_id)
     assert session is not None
     assert session["location"] == "Toronto, ON"
-    assert len(session["sitters"]) == 1
-    
-    sitter = session["sitters"][0]
-    assert sitter["name"] == "Alex P."
-    assert sitter["price_numeric"] == 25.0
-    assert sitter["is_excluded"] == 0
-    
-    # Test exclusion persistence
-    sitter_id = sitter["id"]
-    updated = update_sitter_exclusion(sitter_id, is_excluded=True, reason="Test exclusion")
-    assert updated is True
-    
-    session_updated = get_session_by_id(session_id)
-    assert session_updated["sitters"][0]["is_excluded"] == 1
-    assert session_updated["sitters"][0]["excluded_reason"] == "Test exclusion"
+    assert len(session["sitters"]) >= 1
 
 def test_delete_session_and_batch():
     init_db()
     stats = {"min_price": 20, "avg_price": 20, "median_price": 20, "p25_price": 20, "p75_price": 20, "max_price": 20}
-    s1 = save_scrape_results("City A", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 1", "price_numeric": 20}])
-    s2 = save_scrape_results("City B", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 2", "price_numeric": 20}])
+    s1 = save_scrape_results("City A", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 1", "price_numeric": 20, "profile_url": "https://rover.com/members/sitter-1"}])
+    s2 = save_scrape_results("City B", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 2", "price_numeric": 20, "profile_url": "https://rover.com/members/sitter-2"}])
     
     # Test single delete
     assert delete_session(s1) is True
@@ -100,23 +87,18 @@ def test_delete_session_and_batch():
     assert delete_sessions([s2]) == 1
     assert get_session_by_id(s2) is None
 
-
 def test_etl_bulk_upsert_sitters_and_services():
     init_db()
-    from app.db.repository import upsert_sitters_and_services_bulk, get_all_normalized_sitters_with_services
-
     sample_sitters = [
         {
             "member_id": "sarah-walker-1",
             "name": "Sarah W.",
             "profile_url": "https://rover.com/members/sarah-walker-1",
             "headline": "Full-time professional dog lover",
+            "neighborhood": "The Annex",
             "photo_url": "https://example.com/sarah.jpg",
             "rating_numeric": 4.95,
             "reviews_count": 42,
-            "lat": 43.65,
-            "lng": -79.38,
-            "service_radius_km": 5.0,
             "services": [
                 {"service_type": "dog-walking", "service_name": "Dog Walking", "price_numeric": 28.0, "rate_unit": "per walk"},
                 {"service_type": "overnight-boarding", "service_name": "Overnight Boarding", "price_numeric": 65.0, "rate_unit": "per night"},
@@ -133,7 +115,7 @@ def test_etl_bulk_upsert_sitters_and_services():
     assert len(normalized) >= 1
     sarah = next(s for s in normalized if s["member_id"] == "sarah-walker-1")
     assert sarah["name"] == "Sarah W."
+    assert sarah["neighborhood"] == "The Annex"
     assert len(sarah["services"]) == 3
     service_types = {srv["service_type"] for srv in sarah["services"]}
     assert service_types == {"dog-walking", "overnight-boarding", "drop-in-visits"}
-
