@@ -37,7 +37,10 @@ env/
 *.swo
 
 # Database & runtime files
+*.db
 *.db-journal
+*.db-shm
+*.db-wal
 *.log
 
 # Operating System files
