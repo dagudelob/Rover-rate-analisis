@@ -21,6 +21,7 @@ let activeCoverageCircle = null;
 let sitterMarkersMap = new Map();
 
 document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     setupSidebarNavigation();
     setupCollapsibleTable();
     loadServices();
@@ -28,7 +29,60 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTemporalTrends();
     setupForm();
     setupOutlierToolbar();
+
+    if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false}
+            ]
+        });
+    }
 });
+
+// Theme Management (Dark / Light Mode)
+function initTheme() {
+    const savedTheme = localStorage.getItem("rover_theme") || "dark";
+    applyTheme(savedTheme);
+
+    const btnHeader = document.getElementById("themeToggleHeader");
+    const btnSidebar = document.getElementById("themeToggleSidebar");
+
+    if (btnHeader) {
+        btnHeader.addEventListener("click", () => {
+            const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+
+    if (btnSidebar) {
+        btnSidebar.addEventListener("click", () => {
+            const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyTheme(next);
+        });
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("rover_theme", theme);
+
+    const iconHeader = document.getElementById("themeIconHeader");
+    const iconSidebar = document.getElementById("themeIconSidebar");
+    const textSidebar = document.getElementById("themeTextSidebar");
+
+    if (theme === "light") {
+        if (iconHeader) iconHeader.textContent = "☀️";
+        if (iconSidebar) iconSidebar.textContent = "☀️";
+        if (textSidebar) textSidebar.textContent = "Dark Mode";
+    } else {
+        if (iconHeader) iconHeader.textContent = "🌙";
+        if (iconSidebar) iconSidebar.textContent = "🌙";
+        if (textSidebar) textSidebar.textContent = "Light Mode";
+    }
+}
 
 // 1. Collapsible Sidebar Navigation and Smooth Scrolling
 function setupSidebarNavigation() {
@@ -81,7 +135,10 @@ async function loadServices() {
     }
 }
 
-// 3. Load Search History List
+// Selected search sessions for batch deletion
+let selectedHistorySessionIds = new Set();
+
+// 3. Load Search History List with Checkboxes & Batch Delete
 async function loadHistory() {
     try {
         const res = await fetch("/api/history");
@@ -89,10 +146,24 @@ async function loadHistory() {
         const list = document.getElementById("historyList");
         list.innerHTML = "";
 
+        const badge = document.getElementById("historySessionsBadge");
+        if (badge) {
+            badge.textContent = `${data.sessions ? data.sessions.length : 0} Sessions`;
+        }
+
         if (!data.sessions || data.sessions.length === 0) {
             list.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem;">No searches saved yet.</p>`;
+            selectedHistorySessionIds.clear();
+            updateHistoryDeleteToolbar();
             return;
         }
+
+        // Clean any selected IDs that no longer exist
+        const existingIds = new Set(data.sessions.map(s => s.id));
+        for (const id of selectedHistorySessionIds) {
+            if (!existingIds.has(id)) selectedHistorySessionIds.delete(id);
+        }
+        updateHistoryDeleteToolbar();
 
         data.sessions.forEach((s) => {
             const date = new Date(s.timestamp).toLocaleString("en-US", {
@@ -100,26 +171,143 @@ async function loadHistory() {
             });
             const item = document.createElement("div");
             item.className = `history-item ${s.id === currentSessionId ? "active" : ""}`;
-            item.onclick = () => loadSessionDetails(s.id);
+            item.style.display = "flex";
+            item.style.alignItems = "center";
+            item.style.gap = "0.75rem";
             
+            const isChecked = selectedHistorySessionIds.has(s.id);
             const avgDisplay = s.avg_price ? `$${s.avg_price.toFixed(1)}` : "--";
 
             item.innerHTML = `
-                <div class="history-info">
+                <div style="display: flex; align-items: center;" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="history-checkbox" data-session-id="${s.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                </div>
+                <div class="history-info" style="flex-grow: 1; cursor: pointer;">
                     <h4>${escapeHtml(s.location)} (${s.total_sitters} sitters)</h4>
                     <p>${escapeHtml(s.service_type)} • ${date} ${s.radius_km ? `• ${s.radius_km}km radius` : ''}</p>
                 </div>
-                <div class="history-stat">
+                <div class="history-stat" style="cursor: pointer; text-align: right;">
                     <div class="avg">${avgDisplay}</div>
                     <p style="font-size:0.7rem; color:var(--text-muted);">Session #${s.id}</p>
                 </div>
+                <button class="btn-delete-single" data-session-id="${s.id}" title="Delete this session from database" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.35rem 0.5rem; font-size: 1.1rem; transition: transform 0.15s; border-radius: 4px;">
+                    🗑️
+                </button>
             `;
+
+            // Row click loads session
+            item.querySelector(".history-info").addEventListener("click", () => loadSessionDetails(s.id));
+            item.querySelector(".history-stat").addEventListener("click", () => loadSessionDetails(s.id));
+
+            // Checkbox toggle
+            const checkbox = item.querySelector(".history-checkbox");
+            checkbox.addEventListener("change", (e) => {
+                if (e.target.checked) {
+                    selectedHistorySessionIds.add(s.id);
+                } else {
+                    selectedHistorySessionIds.delete(s.id);
+                }
+                updateHistoryDeleteToolbar();
+            });
+
+            // Single item trash button listener
+            const trashBtn = item.querySelector(".btn-delete-single");
+            trashBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                deleteSingleHistorySession(s.id);
+            });
+
             list.appendChild(item);
         });
+
+        setupHistoryToolbarHandlers(data.sessions);
     } catch (err) {
         console.error("Error loading history:", err);
     }
 }
+
+function updateHistoryDeleteToolbar() {
+    const btnDelete = document.getElementById("btnDeleteSelectedSessions");
+    const countBadge = document.getElementById("deleteCountBadge");
+    if (!btnDelete || !countBadge) return;
+
+    countBadge.textContent = selectedHistorySessionIds.size;
+    if (selectedHistorySessionIds.size > 0) {
+        btnDelete.style.display = "inline-flex";
+    } else {
+        btnDelete.style.display = "none";
+    }
+}
+
+function setupHistoryToolbarHandlers(sessions) {
+    const btnSelectAll = document.getElementById("btnSelectAllHistory");
+    const btnDeselectAll = document.getElementById("btnDeselectAllHistory");
+    const btnDelete = document.getElementById("btnDeleteSelectedSessions");
+
+    if (btnSelectAll) {
+        btnSelectAll.onclick = () => {
+            sessions.forEach(s => selectedHistorySessionIds.add(s.id));
+            document.querySelectorAll(".history-checkbox").forEach(cb => cb.checked = true);
+            updateHistoryDeleteToolbar();
+        };
+    }
+
+    if (btnDeselectAll) {
+        btnDeselectAll.onclick = () => {
+            selectedHistorySessionIds.clear();
+            document.querySelectorAll(".history-checkbox").forEach(cb => cb.checked = false);
+            updateHistoryDeleteToolbar();
+        };
+    }
+
+    if (btnDelete) {
+        btnDelete.onclick = async () => {
+            if (selectedHistorySessionIds.size === 0) return;
+            const count = selectedHistorySessionIds.size;
+            try {
+                const res = await fetch("/api/history", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_ids: Array.from(selectedHistorySessionIds) })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    logToTerminal(`[DB] Successfully deleted ${data.deleted_count || count} session(s) from SQLite.`, "success");
+                    selectedHistorySessionIds.clear();
+                    await loadHistory();
+                    await loadTemporalTrends();
+                } else {
+                    logToTerminal("[DB Error] Could not delete sessions from database.", "error");
+                }
+            } catch (err) {
+                console.error("Error deleting sessions:", err);
+                logToTerminal(`[DB Error] ${err.message}`, "error");
+            }
+        };
+    }
+}
+
+async function deleteSingleHistorySession(sessionId) {
+    try {
+        const res = await fetch(`/api/history/${sessionId}`, { method: "DELETE" });
+        if (res.ok) {
+            logToTerminal(`[DB] Deleted session #${sessionId} and all its listings.`, "info");
+            selectedHistorySessionIds.delete(sessionId);
+            if (currentSessionId === sessionId) {
+                currentSessionId = null;
+            }
+            await loadHistory();
+            await loadTemporalTrends();
+        } else {
+            logToTerminal(`[DB Error] Could not delete session #${sessionId}.`, "error");
+        }
+    } catch (err) {
+        console.error("Error deleting single session:", err);
+    }
+}
+
+// Expose globally
+window.deleteSingleHistorySession = deleteSingleHistorySession;
 
 // 4. Load Detailed Session
 async function loadSessionDetails(sessionId) {

@@ -18,6 +18,8 @@ from database import (
     init_db,
     save_scrape_results,
     update_sitter_exclusion,
+    delete_session,
+    delete_sessions,
     get_all_sessions,
     get_session_by_id,
     get_master_historical_data,
@@ -73,6 +75,9 @@ class SitterExclusionRequest(BaseModel):
     is_excluded: bool
     reason: Optional[str] = "Manual outlier toggle"
 
+class DeleteSessionsRequest(BaseModel):
+    session_ids: List[int]
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     """Serves the main single page dashboard interface."""
@@ -91,6 +96,20 @@ async def list_history():
     """Returns search history sessions."""
     sessions = get_all_sessions()
     return {"sessions": sessions}
+
+@app.delete("/api/history/{session_id}")
+async def delete_history_session(session_id: int):
+    """Deletes a single search session and associated sitters."""
+    success = delete_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "success", "deleted_session_id": session_id}
+
+@app.delete("/api/history")
+async def delete_history_sessions_batch(req: DeleteSessionsRequest):
+    """Batch deletes multiple search sessions."""
+    count = delete_sessions(req.session_ids)
+    return {"status": "success", "deleted_count": count}
 
 @app.get("/api/history/{session_id}")
 async def get_session_details(session_id: int):

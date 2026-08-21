@@ -1,30 +1,82 @@
-:root {
-  --bg-primary: #0b0f19;
-  --bg-secondary: #111827;
-  --bg-card: rgba(17, 24, 39, 0.75);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-focus: #3b82f6;
-  
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+/* ==========================================================================
+   Rover Market Intelligence & Analytics Platform — Design System
+   Dual-Theme System (Dark Midnight / Light Nordic) using Color Theory
+   ========================================================================== */
 
-  --accent-primary: #3b82f6;
-  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
-  
+:root {
+  /* DARK THEME PALETTE (Default) */
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: rgba(17, 24, 39, 0.78);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
+  --bg-input: rgba(15, 23, 42, 0.6);
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-card: rgba(255, 255, 255, 0.12);
+  --border-focus: #38bdf8;
+
+  /* Typography Colors */
+  --text-heading: #ffffff;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  /* Harmonious Accents */
+  --accent-primary: #38bdf8;
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  --accent-emerald: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-rose: #f87171;
+  --accent-purple: #a78bfa;
+
+  /* Glassmorphism & Elevation */
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
+
   --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  
+
   --nav-width-expanded: 240px;
   --nav-width-collapsed: 72px;
 }
 
+[data-theme="light"] {
+  /* LIGHT NORDIC PALETTE (High Contrast, WCAG AAA Compliant) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-input: #ffffff;
+  --bg-subtle: #f8fafc;
+
+  --border-color: #e2e8f0;
+  --border-card: #cbd5e1;
+  --border-focus: #2563eb;
+
+  /* Typography Colors */
+  --text-heading: #0f172a;
+  --text-primary: #1e293b;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  /* Harmonious Accents (Tuned for light background contrast) */
+  --accent-primary: #0284c7;
+  --accent-gradient: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
+  --accent-emerald: #059669;
+  --accent-amber: #d97706;
+  --accent-rose: #dc2626;
+  --accent-purple: #7c3aed;
+
+  /* Elevation */
+  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Base Reset */
 * {
   margin: 0;
   padding: 0;
@@ -37,19 +89,31 @@ body {
   color: var(--text-primary);
   font-family: var(--font-main);
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.55;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.10) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(124, 58, 237, 0.06) 0px, transparent 50%);
   background-attachment: fixed;
   display: flex;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Collapsible Navigation Drawer Sidebar */
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-heading);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* ==========================================================================
+   Navigation Sidebar
+   ========================================================================== */
+
 .app-nav-sidebar {
   width: var(--nav-width-expanded);
-  background: rgba(11, 15, 25, 0.95);
+  background: var(--bg-card);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid var(--border-color);
   height: 100vh;
   position: sticky;
@@ -61,6 +125,7 @@ body {
   z-index: 100;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .app-nav-sidebar.collapsed {
@@ -98,22 +163,22 @@ body {
 .sidebar-logo svg {
   width: 22px;
   height: 22px;
-  fill: #fff;
+  fill: #ffffff;
 }
 
 .sidebar-brand-text {
   font-weight: 700;
   font-size: 1.1rem;
-  color: #fff;
-  transition: opacity 0.2s;
+  color: var(--text-heading);
 }
 
-.app-nav-sidebar.collapsed .sidebar-brand-text {
+.app-nav-sidebar.collapsed .sidebar-brand-text,
+.app-nav-sidebar.collapsed .nav-text {
   display: none;
 }
 
 .btn-sidebar-toggle {
-  background: transparent;
+  background: var(--bg-subtle);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
@@ -127,8 +192,8 @@ body {
 }
 
 .btn-sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-primary);
 }
 
 /* Nav Menu Items */
@@ -149,7 +214,7 @@ body {
   text-decoration: none;
   font-weight: 500;
   font-size: 0.9rem;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -162,21 +227,21 @@ body {
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent-primary);
 }
 
 .nav-link.active {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(56, 189, 248, 0.15);
   color: var(--accent-primary);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-weight: 600;
 }
 
-.app-nav-sidebar.collapsed .nav-text {
-  display: none;
-}
+/* ==========================================================================
+   Main Layout & App Header
+   ========================================================================== */
 
-/* Main Content Area */
 .app-main-layout {
   flex: 1;
   padding: 2rem 2.5rem;
@@ -185,7 +250,6 @@ body {
   min-width: 0;
 }
 
-/* Section Wrapper */
 .content-section {
   scroll-margin-top: 2rem;
   margin-bottom: 2.5rem;
@@ -196,18 +260,19 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .section-header h2 {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-heading);
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
-/* Top App Header */
 .app-header {
   display: flex;
   justify-content: space-between;
@@ -215,16 +280,20 @@ body {
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .logo-text h1 {
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(180deg, #fff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-heading);
+}
+
+.logo-text p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
 }
 
 .badge-stealth {
@@ -255,7 +324,10 @@ body {
   100% { transform: scale(0.95); opacity: 0.7; }
 }
 
-/* Grid Layouts */
+/* ==========================================================================
+   Cards & Layout
+   ========================================================================== */
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 380px 1fr;
@@ -268,16 +340,16 @@ body {
   }
 }
 
-/* Glass Cards */
 .card {
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-card);
   margin-bottom: 1.5rem;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .card-title {
@@ -287,10 +359,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: #fff;
+  color: var(--text-heading);
 }
 
-/* Forms */
+/* ==========================================================================
+   Form Controls
+   ========================================================================== */
+
 .form-group {
   margin-bottom: 1.2rem;
 }
@@ -298,18 +373,18 @@ body {
 .form-label {
   display: block;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .form-input, .form-select {
   width: 100%;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
-  color: #fff;
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -318,25 +393,26 @@ body {
 .form-input:focus, .form-select:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
 
 .form-select option {
   background-color: var(--bg-secondary);
-  color: #fff;
+  color: var(--text-primary);
 }
 
+/* Buttons */
 .btn-primary {
   width: 100%;
   padding: 0.85rem;
   background: var(--accent-gradient);
   border: none;
   border-radius: var(--radius-sm);
-  color: #fff;
+  color: #ffffff;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
   display: flex;
   align-items: center;
@@ -346,7 +422,7 @@ body {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
 }
 
 .btn-primary:disabled {
@@ -354,10 +430,57 @@ body {
   cursor: not-allowed;
 }
 
+.btn-secondary {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.btn-accent {
+  background: var(--accent-gradient);
+  border: none;
+  color: #ffffff;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.btn-accent:hover {
+  opacity: 0.92;
+}
+
+.export-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* Terminal Log Box */
 .terminal-card {
   background: #080c14;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.25);
   border-radius: var(--radius-md);
   padding: 1rem;
   font-family: var(--font-mono);
@@ -365,6 +488,12 @@ body {
   height: 200px;
   overflow-y: auto;
   color: #a5b4fc;
+}
+
+[data-theme="light"] .terminal-card {
+  background: #0f172a;
+  border-color: #334155;
+  color: #93c5fd;
 }
 
 .terminal-line {
@@ -380,7 +509,7 @@ body {
 .progress-bar-container {
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-color);
   border-radius: 999px;
   overflow: hidden;
   margin: 1rem 0 0.5rem 0;
@@ -393,7 +522,10 @@ body {
   transition: width 0.3s ease;
 }
 
-/* KPI Cards */
+/* ==========================================================================
+   KPI Metrics & Statistics
+   ========================================================================== */
+
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -402,7 +534,7 @@ body {
 }
 
 .metric-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-subtle);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.1rem;
@@ -416,55 +548,20 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.4rem;
+  font-weight: 600;
 }
 
 .metric-value {
   font-size: 1.55rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-heading);
 }
 
 .metric-sub {
   font-size: 0.75rem;
   color: var(--accent-emerald);
   margin-top: 0.2rem;
-}
-
-/* Outlier Studio & Advanced Statistics Grid */
-.outlier-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.9rem 1.25rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  margin-bottom: 1.25rem;
-}
-
-.btn-filter-tag {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color);
-  color: #fff;
-  padding: 0.4rem 0.85rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition: all 0.15s;
-}
-
-.btn-filter-tag:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: var(--accent-primary);
-}
-
-.btn-filter-tag.active {
-  background: var(--accent-gradient);
-  border-color: transparent;
+  font-weight: 600;
 }
 
 .advanced-stats-grid {
@@ -475,25 +572,75 @@ body {
 }
 
 .stat-pill {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--bg-subtle);
   padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--accent-primary);
+  border-top: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .stat-pill-label {
   font-size: 0.75rem;
   color: var(--text-muted);
+  font-weight: 600;
 }
 
 .stat-pill-value {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-heading);
   margin-top: 0.2rem;
 }
 
-/* Heatmap & Leaflet Map */
+/* ==========================================================================
+   Outlier Studio Toolbar
+   ========================================================================== */
+
+.outlier-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem 1.25rem;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1.25rem;
+}
+
+.btn-filter-tag {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s;
+}
+
+.btn-filter-tag:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.btn-filter-tag.active {
+  background: var(--accent-gradient);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Leaflet Map & Heatmap
+   ========================================================================== */
+
 .map-card {
   margin-bottom: 1.5rem;
   overflow: hidden;
@@ -531,28 +678,28 @@ body {
 }
 
 .leaflet-container {
-  background: #090d16 !important;
+  background: var(--bg-primary) !important;
   font-family: var(--font-main) !important;
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(17, 24, 39, 0.92) !important;
+  background: var(--bg-card) !important;
   backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: #fff !important;
+  border: 1px solid var(--border-card) !important;
+  color: var(--text-primary) !important;
   border-radius: var(--radius-sm) !important;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 .leaflet-popup-tip {
-  background: rgba(17, 24, 39, 0.92) !important;
+  background: var(--bg-card) !important;
 }
 
 .sitter-popup-card h4 {
   font-size: 0.95rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
-  color: #fff;
+  color: var(--text-heading);
 }
 
 .sitter-popup-card p {
@@ -564,7 +711,7 @@ body {
 .sitter-popup-badge {
   display: inline-block;
   background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: var(--accent-emerald);
   font-weight: 700;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
@@ -577,7 +724,7 @@ body {
   justify-content: center;
   font-weight: 700;
   font-size: 0.8rem;
-  color: #fff;
+  color: #ffffff;
   border-radius: 999px;
   padding: 2px 7px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.6);
@@ -592,7 +739,10 @@ body {
   z-index: 1000 !important;
 }
 
-/* Charts Grid */
+/* ==========================================================================
+   Charts Grid
+   ========================================================================== */
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -612,10 +762,27 @@ body {
   width: 100%;
 }
 
-/* Table Styles */
+/* ==========================================================================
+   Table Styles & Collapsible Wrapper
+   ========================================================================== */
+
+.collapsible-table-wrapper {
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  opacity: 1;
+}
+
+.collapsible-table-wrapper.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .table-responsive {
   overflow-x: auto;
   border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
 }
 
 .data-table {
@@ -626,7 +793,7 @@ body {
 }
 
 .data-table th {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--bg-subtle);
   color: var(--text-secondary);
   font-weight: 600;
   padding: 0.9rem 1rem;
@@ -635,13 +802,13 @@ body {
 
 .data-table td {
   padding: 0.9rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   transition: background 0.15s;
 }
 
 .data-table tr.sitter-row-active {
-  background: rgba(59, 130, 246, 0.18) !important;
+  background: rgba(56, 189, 248, 0.15) !important;
 }
 
 .data-table tr.sitter-row-excluded {
@@ -650,14 +817,14 @@ body {
 }
 
 .data-table tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(56, 189, 248, 0.06);
   cursor: pointer;
 }
 
 .badge-price {
   font-weight: 700;
   color: var(--accent-emerald);
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
   padding: 0.2rem 0.5rem;
   border-radius: var(--radius-sm);
 }
@@ -671,7 +838,7 @@ body {
 
 .badge-outlier-tag {
   background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  color: var(--accent-rose);
   border: 1px solid rgba(239, 68, 68, 0.3);
   font-size: 0.72rem;
   padding: 0.15rem 0.45rem;
@@ -679,35 +846,38 @@ body {
   font-weight: 600;
 }
 
-/* History List */
+/* ==========================================================================
+   Saved Search Sessions (History List)
+   ========================================================================== */
+
 .history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-subtle);
   margin-bottom: 0.5rem;
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
-  border: 1px solid transparent;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+  border: 1px solid var(--border-color);
 }
 
 .history-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+  border-color: var(--accent-primary);
   transform: translateX(3px);
 }
 
 .history-item.active {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(56, 189, 248, 0.15);
   border-color: var(--accent-primary);
 }
 
 .history-info h4 {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-heading);
 }
 
 .history-info p {
@@ -725,164 +895,13 @@ body {
   color: var(--accent-emerald);
 }
 
-.export-btn-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-color);
-  color: #fff;
-  padding: 0.5rem 0.9rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.btn-accent {
-  background: var(--accent-gradient);
-  border: none;
-  color: #fff;
-  padding: 0.55rem 1rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-}
-
-.btn-accent:hover {
-  opacity: 0.92;
-}
-
-/* ========================================
-   Data Science Academy Section
-======================================== */
-
-.ds-technique-card {
-  border: 1px solid var(--border-color);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.ds-technique-card:hover {
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 25px rgba(139, 92, 246, 0.12);
-}
-
-.ds-technique-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-}
-
-.ds-technique-header h3 {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.ds-badge {
-  font-size: 0.75rem;
-  font-weight: 800;
-  border: 1px solid;
-  border-radius: var(--radius-sm);
-  padding: 0.25rem 0.5rem;
-  font-family: var(--font-mono);
-  letter-spacing: 0.05em;
-}
-
-.ds-description {
-  font-size: 0.875rem;
-  color: #94a3b8;
-  line-height: 1.6;
-  margin-bottom: 0.75rem;
-}
-
-.ds-description strong {
-  color: #e2e8f0;
-}
-
-.ds-formula {
-  background: rgba(0, 0, 0, 0.35);
-  border-left: 3px solid #7c3aed;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  padding: 0.65rem 1rem;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: #c4b5fd;
-  margin-bottom: 1rem;
-  word-break: break-word;
-}
-
-.ds-demo-area {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.ds-result {
-  font-size: 0.85rem;
-  line-height: 1.6;
-  padding: 0.65rem;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid rgba(139, 92, 246, 0.5);
-  min-height: 2rem;
-  color: #e2e8f0;
-  font-family: var(--font-mono);
-  white-space: pre-wrap;
-}
-
-.ds-use-case {
-  font-size: 0.8rem;
-  color: #7c3aed;
-  background: rgba(124, 58, 237, 0.08);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(124, 58, 237, 0.2);
-}
-
-/* ========================================
-   Collapsible Table Wrapper
-======================================== */
-
-.collapsible-table-wrapper {
-  max-height: 2000px;
-  overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
-  opacity: 1;
-}
-
-.collapsible-table-wrapper.collapsed {
-  max-height: 0 !important;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ========================================
+/* ==========================================================================
    5-Service Pricing Strategy Cards
-======================================== */
+   ========================================================================== */
 
 .service-strategy-card {
   border: 1px solid var(--border-color);
+  background: var(--bg-card);
   transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
@@ -890,8 +909,8 @@ body {
 
 .service-strategy-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-card);
 }
 
 .service-strategy-header {
@@ -925,13 +944,13 @@ body {
 
 .service-strategy-desc {
   font-size: 0.82rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin-bottom: 0.75rem;
   line-height: 1.4;
 }
 
 .service-rate-calc {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.85rem;
   display: flex;
@@ -939,19 +958,19 @@ body {
   align-items: center;
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  color: #e2e8f0;
+  color: var(--text-primary);
   margin-bottom: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
 }
 
 .service-tactics {
   font-size: 0.8rem;
-  color: #cbd5e1;
+  color: var(--text-secondary);
   line-height: 1.5;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-subtle);
   padding: 0.75rem;
   border-radius: var(--radius-sm);
-  border-left: 3px solid #38bdf8;
+  border-left: 3px solid var(--accent-primary);
   margin-top: auto;
 }
 
@@ -959,9 +978,105 @@ body {
   margin: 0;
 }
 
-/* ========================================
+/* ==========================================================================
+   Data Science Academy & KaTeX Formulas
+   ========================================================================== */
+
+.ds-technique-card {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ds-technique-card:hover {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.12);
+}
+
+.ds-technique-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.ds-technique-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.ds-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.ds-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.ds-description strong {
+  color: var(--text-heading);
+}
+
+.ds-formula {
+  background: var(--bg-subtle);
+  border-left: 3px solid var(--accent-purple);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  border-top: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ds-demo-area {
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ds-result {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 0.65rem;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-purple);
+  min-height: 2rem;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ds-use-case {
+  font-size: 0.8rem;
+  color: var(--accent-purple);
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  font-weight: 500;
+}
+
+/* ==========================================================================
    Wikipedia-Style Data Science Encyclopedia
-======================================== */
+   ========================================================================== */
 
 .wiki-grid {
   display: grid;
@@ -970,16 +1085,17 @@ body {
 }
 
 .wiki-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(18, 22, 34, 0.75);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   display: flex;
   flex-direction: column;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 .wiki-card:hover {
-  border-color: rgba(52, 211, 153, 0.35);
-  box-shadow: 0 0 25px rgba(52, 211, 153, 0.08);
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.12);
 }
 
 .wiki-card-header {
@@ -994,33 +1110,35 @@ body {
   font-size: 1rem;
   font-weight: 700;
   margin: 0;
+  color: var(--text-heading);
 }
 
 .wiki-link {
-  color: #6ee7b7;
+  color: var(--accent-emerald);
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .wiki-link:hover {
-  color: #a7f3d0;
   text-decoration: underline;
+  opacity: 0.85;
 }
 
 .wiki-tag {
   font-size: 0.7rem;
   font-family: var(--font-mono);
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .wiki-card p {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 0.85rem;
   flex-grow: 1;
@@ -1028,18 +1146,18 @@ body {
 
 .wiki-citation {
   font-size: 0.75rem;
-  color: #64748b;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
   padding-top: 0.6rem;
   font-family: var(--font-mono);
 }
 
 .wiki-citation a {
-  color: #94a3b8;
+  color: var(--text-secondary);
   text-decoration: none;
 }
 
 .wiki-citation a:hover {
-  color: #34d399;
+  color: var(--accent-emerald);
   text-decoration: underline;
 }
