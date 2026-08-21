@@ -1,14 +1,16 @@
 import pytest
 import os
 import sqlite3
-from database import (
-    get_db,
-    init_db,
+from app.db.connection import get_db
+from app.db.schema import init_db
+from app.db.repository import (
     save_scrape_results,
     update_sitter_exclusion,
     get_all_sessions,
     get_session_by_id,
-    get_master_historical_data
+    get_master_historical_data,
+    delete_session,
+    delete_sessions,
 )
 
 def test_database_lifecycle_and_schema():
@@ -91,7 +93,6 @@ def test_delete_session_and_batch():
     s2 = save_scrape_results("City B", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 2", "price_numeric": 20}])
     
     # Test single delete
-    from database import delete_session, delete_sessions
     assert delete_session(s1) is True
     assert get_session_by_id(s1) is None
     

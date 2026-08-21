@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from analytics import calculate_market_statistics, calculate_pricing_sweet_spot, detect_outliers_iqr
+from app.services.analytics import calculate_market_statistics, calculate_pricing_sweet_spot, detect_outliers_iqr
 
 def test_market_statistics_basic():
     records = [
