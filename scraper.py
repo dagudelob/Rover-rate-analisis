@@ -141,34 +141,58 @@ async def scrape_rover_with_events(
                 cards_data = await page.evaluate("""
                     () => {
                         const results = [];
-                        const links = Array.from(document.querySelectorAll("a[href*='/members/']"));
+                        const memberLinks = Array.from(document.querySelectorAll("a[href*='/members/']"));
                         const seenUrls = new Set();
 
-                        for (const a of links) {
-                            let href = a.getAttribute('href') || '';
-                            if (href.startsWith('/')) href = 'https://www.rover.com' + href;
-                            
-                            const cleanUrl = href.split('?')[0];
+                        for (const a of memberLinks) {
+                            let rawHref = a.getAttribute('href') || '';
+                            let fullHref = rawHref.startsWith('/') ? 'https://www.rover.com' + rawHref : rawHref;
+                            const cleanUrl = fullHref.split('?')[0];
+
                             if (seenUrls.has(cleanUrl)) continue;
                             seenUrls.add(cleanUrl);
 
-                            let container = a;
-                            for (let i = 0; i < 7; i++) {
-                                if (!container.parentElement) break;
-                                container = container.parentElement;
-                                const text = container.innerText || '';
-                                if (text.includes('$') && (text.includes('star') || text.includes('review') || text.includes('('))) {
+                            // Find the specific card container for this sitter
+                            let card = a;
+                            let current = a;
+                            while (current && current.parentElement && current.parentElement.tagName !== 'BODY' && current.parentElement.tagName !== 'MAIN') {
+                                current = current.parentElement;
+                                const txt = current.innerText || '';
+                                if (txt.includes('$') && (txt.includes('per walk') || txt.includes('per night') || txt.includes('per visit') || txt.includes('per day') || txt.includes('stars') || txt.includes('reviews') || txt.includes('('))) {
+                                    card = current;
                                     break;
                                 }
                             }
 
-                            const text = container.innerText || '';
-                            const img = container.querySelector('img');
+                            // Extract the price badge element specifically from the card DOM
+                            let priceText = '';
+                            const allElements = Array.from(card.querySelectorAll('*'));
+                            for (const el of allElements) {
+                                const t = (el.innerText || '').trim();
+                                if (/^\\$\\s*\\d+/.test(t) && (t.includes('per') || t.includes('total') || t.length < 25)) {
+                                    priceText = t;
+                                    break;
+                                }
+                            }
+
+                            // Extract sitter name directly from headings or profile link text
+                            let extractedName = '';
+                            const nameHeading = card.querySelector('h2, h3, [class*="name"], [data-testid*="name"]');
+                            if (nameHeading) {
+                                extractedName = (nameHeading.innerText || '').trim();
+                            }
+                            if (!extractedName) {
+                                extractedName = (a.innerText || '').trim();
+                            }
+
+                            const img = card.querySelector('img');
                             const photoUrl = img ? (img.getAttribute('src') || '') : '';
 
                             results.push({
                                 url: cleanUrl,
-                                rawText: text,
+                                extractedName: extractedName,
+                                priceText: priceText,
+                                cardText: card.innerText || '',
                                 photoUrl: photoUrl
                             });
                         }
@@ -192,38 +216,101 @@ async def scrape_rover_with_events(
                         continue
                     seen_profiles.add(profile_url)
 
-                    raw_text = item["rawText"]
+                    card_text = item["cardText"]
+                    price_text = item.get("priceText", "")
                     photo_url = item.get("photoUrl")
+                    extracted_name = item.get("extractedName", "")
 
-                    lines = [line.strip() for line in raw_text.split('\n') if line.strip()]
-                    
+                    # Service-Specific Price and Rate Unit Extraction
                     raw_price = None
                     price_numeric = None
-                    price_match = re.search(r'(\$\s*\d+(?:\.\d+)?)', raw_text)
-                    if price_match:
-                        raw_price = price_match.group(1).replace(" ", "")
-                        num_match = re.search(r'(\d+(?:\.\d+)?)', raw_price)
-                        if num_match:
-                            price_numeric = float(num_match.group(1))
+                    rate_unit = None
 
+                    # Expected unit keyword tokens per service
+                    expected_units = {
+                        "dog-walking": ["walk"],
+                        "drop-in-visits": ["visit"],
+                        "overnight-boarding": ["night"],
+                        "house-sitting": ["night"],
+                        "day-care": ["day"]
+                    }
+                    target_tokens = expected_units.get(service_type, ["walk", "night", "visit", "day"])
+
+                    # 1. Primary Strategy: Check the dedicated price element text
+                    if price_text:
+                        pm = re.search(r'\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)?(walk|night|visit|day)?', price_text, re.IGNORECASE)
+                        if pm:
+                            price_numeric = float(pm.group(1))
+                            raw_price = f"${pm.group(1)}"
+                            matched_unit = pm.group(2)
+                            if matched_unit:
+                                rate_unit = f"per {matched_unit.lower()}"
+
+                    # 2. Secondary Strategy: Search for explicit "$XX [total] per [unit]" patterns in card text
+                    if price_numeric is None or rate_unit is None:
+                        matches = re.findall(r'\$\s*(\d+(?:\.\d+)?)\s*(?:total\s+)?(?:per\s+|/)(walk|night|visit|day)', card_text, re.IGNORECASE)
+                        for price_str, unit_str in matches:
+                            unit_clean = unit_str.lower()
+                            if any(tok in unit_clean for tok in target_tokens):
+                                price_numeric = float(price_str)
+                                raw_price = f"${price_str}"
+                                rate_unit = f"per {unit_clean}"
+                                break
+                        # If no target token matched but matches exist, take the first valid price
+                        if price_numeric is None and matches:
+                            first_p, first_u = matches[0]
+                            price_numeric = float(first_p)
+                            raw_price = f"${first_p}"
+                            rate_unit = f"per {first_u.lower()}"
+
+                    # 3. Tertiary Strategy: Parse the first 6 header lines only (avoiding bio/reviews)
+                    if price_numeric is None:
+                        lines = [l.strip() for l in card_text.split('\n') if l.strip()]
+                        for i, line in enumerate(lines[:8]):
+                            if line.startswith("“") or line.startswith('"') or line.lower().startswith("about:"):
+                                break
+                            stand_m = re.match(r'^\$\s*(\d+(?:\.\d+)?)$', line)
+                            if stand_m:
+                                price_numeric = float(stand_m.group(1))
+                                raw_price = f"${stand_m.group(1)}"
+                                rate_unit = f"per {target_tokens[0]}"
+                                if i + 1 < len(lines):
+                                    next_l = lines[i+1].lower()
+                                    if "walk" in next_l: rate_unit = "per walk"
+                                    elif "night" in next_l: rate_unit = "per night"
+                                    elif "visit" in next_l: rate_unit = "per visit"
+                                    elif "day" in next_l: rate_unit = "per day"
+                                break
+
+                    # Default unit if not explicitly matched
+                    if rate_unit is None and target_tokens:
+                        rate_unit = f"per {target_tokens[0]}"
+
+                    # Ratings and Reviews Extraction
                     rating = None
                     rating_numeric = None
                     reviews = None
                     reviews_count = 0
                     
-                    rating_match = re.search(r'(\d+\.\d+)\s+out of 5 stars|(\d+\.\d+)\s*\(\d+\)', raw_text)
+                    rating_match = re.search(r'(\d+\.\d+)\s+out of 5 stars|(\d+\.\d+)\s*\(\d+\)', card_text)
                     if rating_match:
                         rat_str = rating_match.group(1) or rating_match.group(2)
                         rating = rat_str
                         rating_numeric = float(rat_str)
 
-                    rev_match = re.search(r'(\d+)\s+reviews?|\((\d+)\)', raw_text)
+                    rev_match = re.search(r'(\d+)\s+reviews?|\((\d+)\)', card_text)
                     if rev_match:
                         cnt_str = rev_match.group(1) or rev_match.group(2)
                         reviews_count = int(cnt_str)
                         reviews = f"{reviews_count} reviews"
 
-                    name = None
+                    # Sitter Name Clean-up
+                    name = extracted_name
+                    if name:
+                        name = re.sub(r'^\d+\.\s*', '', name)
+                        name = re.sub(r'(Star Sitter|Repeat Clients?|Highly Responsive).*$', '', name, flags=re.IGNORECASE).strip()
+
+                    lines = [line.strip() for line in card_text.split('\n') if line.strip()]
                     headline = None
                     neighborhood = None
 
@@ -231,17 +318,15 @@ async def scrape_rover_with_events(
                         if any(term in line.lower() for term in ['view all', 'photo', 'total', 'per walk', 'per night', 'highly responsive', 'repeat clients', 'out of 5 stars', '$']):
                             continue
                         if not name:
-                            name = line
-                        elif not headline and len(line) > 5 and not line.startswith('★'):
+                            name = re.sub(r'^\d+\.\s*', '', line)
+                            name = re.sub(r'(Star Sitter|Repeat Clients?|Highly Responsive).*$', '', name, flags=re.IGNORECASE).strip()
+                        elif not headline and len(line) > 5 and not line.startswith('★') and not line.startswith('•'):
                             headline = line
                             break
 
                     if not name and profile_url:
                         slug = profile_url.split('/members/')[-1].strip('/')
                         name = " ".join([word.capitalize() for word in slug.split('-')[:2]])
-                    elif name:
-                        name = re.sub(r'^\d+\.\s*', '', name)
-                        name = re.sub(r'(Star Sitter|Repeat Clients?|Highly Responsive).*$', '', name, flags=re.IGNORECASE).strip()
 
                     # Extract neighborhood if mentioned
                     if headline and any(k in headline.lower() for k in ['midtown', 'downtown', 'waterfront', 'annex', 'liberty', 'leslieville', 'beaches', 'yorkville', 'danforth']):
@@ -269,6 +354,7 @@ async def scrape_rover_with_events(
                             "name": name or "Rover Sitter",
                             "raw_price": raw_price,
                             "price_numeric": price_numeric,
+                            "rate_unit": rate_unit,
                             "rating": rating,
                             "rating_numeric": rating_numeric,
                             "reviews": reviews,
