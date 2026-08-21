@@ -65,7 +65,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     setupSidebarNavigation();
     setupCollapsibleTable();
-    loadServices();
+    setupPlatformSelector();
+    loadServices("rover");
     loadHistory();
     loadTemporalTrends();
     setupForm();
@@ -158,12 +159,13 @@ function setupSidebarNavigation() {
     });
 }
 
-// 2. Load Service categories
-async function loadServices() {
+// 2. Load Service categories dynamically based on selected marketplace platform
+async function loadServices(platform = "rover") {
     try {
-        const res = await fetch("/api/services");
+        const res = await fetch(`/api/services?platform=${encodeURIComponent(platform)}`);
         const services = await res.json();
         const select = document.getElementById("serviceSelect");
+        if (!select) return;
         select.innerHTML = "";
         
         for (const [key, label] of Object.entries(services)) {
@@ -174,6 +176,15 @@ async function loadServices() {
         }
     } catch (err) {
         console.error("Error loading services:", err);
+    }
+}
+
+function setupPlatformSelector() {
+    const platformSelect = document.getElementById("platformSelect");
+    if (platformSelect) {
+        platformSelect.addEventListener("change", (e) => {
+            loadServices(e.target.value);
+        });
     }
 }
 
@@ -380,13 +391,14 @@ async function loadSessionDetails(sessionId) {
     }
 }
 
-// 5. Setup Form Submission with High-Volume Multi-Page & Radius
+// 5. Setup Form Submission with Multi-Platform, Multi-Page & Radius
 function setupForm() {
     const form = document.getElementById("scraperForm");
 
     form.addEventListener("submit", (e) => {
         e.preventDefault();
         
+        const platform = document.getElementById("platformSelect") ? document.getElementById("platformSelect").value : "rover";
         const location = document.getElementById("locationInput").value.trim();
         const service = document.getElementById("serviceSelect").value;
         const radiusKm = document.getElementById("radiusInput").value.trim();
@@ -399,11 +411,11 @@ function setupForm() {
             return;
         }
 
-        startScrapeStream(location, service, radiusKm, maxPages, maxResults, proxy);
+        startScrapeStream(location, service, radiusKm, maxPages, maxResults, proxy, platform);
     });
 }
 
-function startScrapeStream(location, service, radiusKm, maxPages, maxResults, proxy) {
+function startScrapeStream(location, service, radiusKm, maxPages, maxResults, proxy, platform = "rover") {
     const btn = document.getElementById("startBtn");
     const progressBar = document.getElementById("progressBar");
     const terminal = document.getElementById("terminal");
@@ -417,7 +429,7 @@ function startScrapeStream(location, service, radiusKm, maxPages, maxResults, pr
         activeEventSource.close();
     }
 
-    let url = `/api/scrape/stream?location=${encodeURIComponent(location)}&service_type=${encodeURIComponent(service)}&max_pages=${maxPages}`;
+    let url = `/api/scrape/stream?location=${encodeURIComponent(location)}&service_type=${encodeURIComponent(service)}&platform=${encodeURIComponent(platform)}&max_pages=${maxPages}`;
     if (radiusKm) url += `&radius_km=${radiusKm}`;
     if (maxResults) url += `&max_results=${maxResults}`;
     if (proxy) url += `&proxy_url=${encodeURIComponent(proxy)}`;

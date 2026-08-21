@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
 from app.services.scraper import SERVICE_NAMES, scrape_rover_with_events
+from app.services.scraper.factory import get_scraper_strategy, list_supported_platforms
 from app.services.analytics import calculate_market_statistics, detect_outliers_iqr
 from app.db.repository import save_scrape_results
 
@@ -21,16 +22,27 @@ logger = logging.getLogger("rover.api.scraping")
 router = APIRouter(prefix="/api", tags=["Scraping"])
 
 
+@router.get("/platforms")
+async def get_platforms():
+    """Returns all supported pet care marketplace platforms (Rover, Wag, Care)."""
+    return {"platforms": list_supported_platforms()}
+
+
 @router.get("/services")
-async def get_services():
-    """Returns available Rover service categories."""
-    return SERVICE_NAMES
+async def get_services(platform: str = Query("rover", description="Marketplace platform ID")):
+    """Returns available service categories for the specified platform."""
+    try:
+        strategy = get_scraper_strategy(platform)
+        return strategy.get_supported_services()
+    except ValueError:
+        return SERVICE_NAMES
 
 
 @router.get("/scrape/stream")
 async def scrape_stream(
     location: str = Query(..., description="Geographic location or postal code"),
-    service_type: str = Query("dog-walking", description="Rover service category"),
+    service_type: str = Query("dog-walking", description="Service category"),
+    platform: str = Query("rover", description="Marketplace platform (rover, wag, care)"),
     radius_km: Optional[float] = Query(None, ge=0.5, le=100.0, description="Custom distance radius in km"),
     max_pages: int = Query(5, ge=1, le=15, description="Max pagination depth"),
     max_results: Optional[int] = Query(100, ge=1, le=200, description="Target limit of sitters to import"),
@@ -47,7 +59,8 @@ async def scrape_stream(
 
         async def run_scraper():
             try:
-                result = await scrape_rover_with_events(
+                strategy = get_scraper_strategy(platform)
+                result = await strategy.scrape(
                     location=location,
                     service_type=service_type,
                     radius_km=radius_km,
