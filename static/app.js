@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTemporalTrends();
     setupForm();
     setupOutlierToolbar();
+    setupSitterTableFilters();
 
     if (window.renderMathInElement) {
         renderMathInElement(document.body, {
@@ -1025,54 +1026,268 @@ async function loadTemporalTrends() {
     }
 }
 
-// 12. Render Sitter Table with Interactive Outlier Exclusion Toggles
+// Sitter Table Filter & Sort State
+let currentSortKey = "default";
+let currentSortOrder = "asc";
+let currentFilterQuery = "";
+let currentStatusFilter = "all";
+let currentMinRating = "all";
+
+function setupSitterTableFilters() {
+    const searchInput = document.getElementById("sitterSearchInput");
+    const statusFilter = document.getElementById("sitterStatusFilter");
+    const ratingFilter = document.getElementById("sitterRatingFilter");
+    const sortSelect = document.getElementById("sitterSortSelect");
+    const clearBtn = document.getElementById("btnClearSitterFilters");
+
+    if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+            currentFilterQuery = e.target.value.trim().toLowerCase();
+            renderTable(currentRecords);
+        });
+    }
+
+    if (statusFilter) {
+        statusFilter.addEventListener("change", (e) => {
+            currentStatusFilter = e.target.value;
+            renderTable(currentRecords);
+        });
+    }
+
+    if (ratingFilter) {
+        ratingFilter.addEventListener("change", (e) => {
+            currentMinRating = e.target.value;
+            renderTable(currentRecords);
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val === "default") {
+                currentSortKey = "default";
+                currentSortOrder = "asc";
+            } else {
+                const [key, order] = val.split("_");
+                currentSortKey = key;
+                currentSortOrder = order;
+            }
+            updateSortHeaderIcons();
+            renderTable(currentRecords);
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            currentFilterQuery = "";
+            currentStatusFilter = "all";
+            currentMinRating = "all";
+            currentSortKey = "default";
+            currentSortOrder = "asc";
+
+            if (searchInput) searchInput.value = "";
+            if (statusFilter) statusFilter.value = "all";
+            if (ratingFilter) ratingFilter.value = "all";
+            if (sortSelect) sortSelect.value = "default";
+
+            updateSortHeaderIcons();
+            renderTable(currentRecords);
+        });
+    }
+
+    // Column Header Click-to-Sort
+    const sortableHeaders = document.querySelectorAll(".sortable-th");
+    sortableHeaders.forEach(th => {
+        th.addEventListener("click", () => {
+            const key = th.getAttribute("data-sort-key");
+            if (currentSortKey === key) {
+                // Toggle direction
+                currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
+            } else {
+                currentSortKey = key;
+                // Default order for numbers/ratings is desc, for text is asc
+                currentSortOrder = (key === "price" || key === "rating" || key === "reviews") ? "desc" : "asc";
+            }
+
+            // Sync with dropdown if matching option exists
+            if (sortSelect) {
+                const optVal = `${currentSortKey}_${currentSortOrder}`;
+                if (sortSelect.querySelector(`option[value="${optVal}"]`)) {
+                    sortSelect.value = optVal;
+                } else {
+                    sortSelect.value = "default";
+                }
+            }
+
+            updateSortHeaderIcons();
+            renderTable(currentRecords);
+        });
+    });
+}
+
+function updateSortHeaderIcons() {
+    const sortableHeaders = document.querySelectorAll(".sortable-th");
+    sortableHeaders.forEach(th => {
+        const key = th.getAttribute("data-sort-key");
+        const icon = document.getElementById(`sortIcon_${key}`);
+        if (currentSortKey === key) {
+            th.classList.add("sort-active");
+            if (icon) icon.textContent = currentSortOrder === "asc" ? "▲" : "▼";
+        } else {
+            th.classList.remove("sort-active");
+            if (icon) icon.textContent = "↕";
+        }
+    });
+}
+
+// 12. Render Sitter Table with Filtering, Multi-Column Sorting & Outlier Controls
 function renderTable(records) {
     const tbody = document.getElementById("sittersTableBody");
+    const countBadge = document.getElementById("sittersCountBadge");
+    const filteredCountBadge = document.getElementById("sitterFilteredCount");
+
     tbody.innerHTML = "";
 
     if (!records || records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 2rem;">No sitters found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 2.5rem;">No sitters found for this session.</td></tr>`;
+        if (countBadge) countBadge.textContent = "0 Sitters";
+        if (filteredCountBadge) filteredCountBadge.style.display = "none";
         return;
     }
 
-    records.forEach((r, idx) => {
-        const isExcluded = currentExcludedIndices.has(idx);
-        const isAutoOutlier = currentAutoOutliers.includes(idx);
+    if (countBadge) countBadge.textContent = `${records.length} Sitters`;
+
+    // Map records with their original index to preserve exclusion & map marker references
+    let indexedRecords = records.map((r, originalIdx) => ({
+        data: r,
+        originalIdx: originalIdx,
+        isExcluded: currentExcludedIndices.has(originalIdx),
+        isAutoOutlier: currentAutoOutliers.includes(originalIdx)
+    }));
+
+    // Apply Filters
+    let filtered = indexedRecords.filter(item => {
+        const r = item.data;
+
+        // 1. Text Search Filter (Name, Headline, Neighborhood, Profile slug)
+        if (currentFilterQuery) {
+            const nameMatch = (r.name || "").toLowerCase().includes(currentFilterQuery);
+            const headlineMatch = (r.headline || "").toLowerCase().includes(currentFilterQuery);
+            const hoodMatch = (r.neighborhood || "").toLowerCase().includes(currentFilterQuery);
+            const rateUnitMatch = (r.rate_unit || "").toLowerCase().includes(currentFilterQuery);
+            if (!nameMatch && !headlineMatch && !hoodMatch && !rateUnitMatch) return false;
+        }
+
+        // 2. Status Filter
+        if (currentStatusFilter === "active" && item.isExcluded) return false;
+        if (currentStatusFilter === "excluded" && !item.isExcluded) return false;
+        if (currentStatusFilter === "outliers" && !item.isAutoOutlier) return false;
+
+        // 3. Minimum Rating Filter
+        if (currentMinRating !== "all") {
+            const minR = parseFloat(currentMinRating);
+            const sitterR = r.rating_numeric || (r.rating ? parseFloat(r.rating) : 0);
+            if (sitterR < minR) return false;
+        }
+
+        return true;
+    });
+
+    // Update Filtered Count Display
+    if (filteredCountBadge) {
+        if (filtered.length !== records.length) {
+            filteredCountBadge.style.display = "inline-block";
+            filteredCountBadge.textContent = `(Showing ${filtered.length} of ${records.length})`;
+        } else {
+            filteredCountBadge.style.display = "none";
+        }
+    }
+
+    // Apply Sorting
+    if (currentSortKey !== "default") {
+        filtered.sort((a, b) => {
+            let valA, valB;
+            const ra = a.data;
+            const rb = b.data;
+
+            switch (currentSortKey) {
+                case "name":
+                    valA = (ra.name || "").toLowerCase();
+                    valB = (rb.name || "").toLowerCase();
+                    return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+
+                case "price":
+                    valA = ra.price_numeric !== null ? ra.price_numeric : 0;
+                    valB = rb.price_numeric !== null ? rb.price_numeric : 0;
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "radius":
+                    valA = ra.service_radius_km || 0;
+                    valB = rb.service_radius_km || 0;
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "rating":
+                    valA = ra.rating_numeric || (ra.rating ? parseFloat(ra.rating) : 0);
+                    valB = rb.rating_numeric || (rb.rating ? parseFloat(rb.rating) : 0);
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                case "reviews":
+                    valA = ra.reviews_count || 0;
+                    valB = rb.reviews_count || 0;
+                    return currentSortOrder === "asc" ? valA - valB : valB - valA;
+
+                default:
+                    return 0;
+            }
+        });
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 2rem;">No sitters match the selected filter criteria. <button onclick="document.getElementById('btnClearSitterFilters').click();" class="btn-secondary" style="font-size:0.75rem; margin-left:0.5rem;">Reset Filters</button></td></tr>`;
+        return;
+    }
+
+    filtered.forEach(item => {
+        const r = item.data;
+        const origIdx = item.originalIdx;
+        const isExcluded = item.isExcluded;
+        const isAutoOutlier = item.isAutoOutlier;
 
         const tr = document.createElement("tr");
         if (isExcluded) tr.classList.add("sitter-row-excluded");
 
-        const priceBadge = r.raw_price ? `<span class="badge-price">${escapeHtml(r.raw_price)}</span>` : "--";
+        const rateUnitDisplay = r.rate_unit ? `<span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.25rem;">${escapeHtml(r.rate_unit)}</span>` : '';
+        const priceBadge = r.raw_price ? `<span class="badge-price">${escapeHtml(r.raw_price)}</span>${rateUnitDisplay}` : "--";
         const outlierTag = isAutoOutlier ? `<span class="badge-outlier-tag" title="Flagged by 1.5*IQR Rule">Outlier</span>` : "";
-        const ratingBadge = r.rating ? `<span class="badge-rating">★ ${escapeHtml(r.rating)}</span>` : `<span style="color:var(--text-muted)">New</span>`;
-        const profileLink = r.profile_url ? `<a href="${r.profile_url}" target="_blank" style="color:var(--accent-primary); text-decoration:none;" onclick="event.stopPropagation();">Profile ↗</a>` : "--";
-        const coverageArea = r.neighborhood ? `<span style="color:#60a5fa; font-weight:500;">${escapeHtml(r.neighborhood)}</span> (~${r.service_radius_km || 2} km)` : `~${r.service_radius_km || 2} km radius`;
+        const ratingBadge = r.rating ? `<span class="badge-rating">★ ${escapeHtml(r.rating)}</span>` : `<span style="color:var(--text-muted); font-size:0.8rem;">New</span>`;
+        const profileLink = r.profile_url ? `<a href="${r.profile_url}" target="_blank" style="color:var(--accent-primary); text-decoration:none; font-weight:500;" onclick="event.stopPropagation();">Profile ↗</a>` : "--";
+        const coverageArea = r.neighborhood ? `<span style="color:var(--accent-primary); font-weight:500;">${escapeHtml(r.neighborhood)}</span> (~${r.service_radius_km || 2} km)` : `~${r.service_radius_km || 2} km radius`;
 
         tr.innerHTML = `
             <td style="text-align: center;">
-                <input type="checkbox" ${!isExcluded ? "checked" : ""} title="Check to include in statistics, uncheck to exclude" onclick="event.stopPropagation();" onchange="toggleSitterExclusion(${idx})">
+                <input type="checkbox" ${!isExcluded ? "checked" : ""} title="Check to include in statistics, uncheck to exclude" onclick="event.stopPropagation();" onchange="toggleSitterExclusion(${origIdx})">
             </td>
             <td>
                 <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <strong style="color:#fff;">${escapeHtml(r.name || 'Anonymous')}</strong>
+                    <strong style="color:var(--text-heading);">${escapeHtml(r.name || 'Anonymous')}</strong>
                     ${outlierTag}
                 </div>
                 ${r.headline ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(r.headline)}</div>` : ''}
             </td>
             <td>${priceBadge}</td>
-            <td style="font-size:0.8rem; color:var(--text-secondary);">${coverageArea}</td>
+            <td style="font-size:0.82rem; color:var(--text-secondary);">${coverageArea}</td>
             <td>${ratingBadge}</td>
-            <td style="color:var(--text-secondary);">${r.reviews ? escapeHtml(r.reviews) : '0 reviews'}</td>
-            <td>${profileLink}</td>
+            <td style="color:var(--text-secondary); font-size:0.85rem;">${r.reviews ? escapeHtml(r.reviews) : '0 reviews'}</td>
+            <td style="text-align: center;">${profileLink}</td>
         `;
 
-        tr.addEventListener("mouseenter", () => highlightSitterCoverage(r, idx, true));
-        tr.addEventListener("mouseleave", () => clearSitterCoverage(idx));
+        tr.addEventListener("mouseenter", () => highlightSitterCoverage(r, origIdx, true));
+        tr.addEventListener("mouseleave", () => clearSitterCoverage(origIdx));
         tr.addEventListener("click", () => {
-            const item = sitterMarkersMap.get(idx);
-            if (item && item.marker) {
-                item.marker.openPopup();
-                mapInstance.panTo([item.lat, item.lng]);
+            const markerItem = sitterMarkersMap.get(origIdx);
+            if (markerItem && markerItem.marker) {
+                markerItem.marker.openPopup();
+                mapInstance.panTo([markerItem.lat, markerItem.lng]);
             }
         });
 
