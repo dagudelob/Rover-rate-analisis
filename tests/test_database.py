@@ -7,6 +7,8 @@ from app.db.repository import (
     save_scrape_results,
     get_all_sessions,
     get_session_by_id,
+    get_sessions_sitters_combined,
+    clear_entire_database,
     get_master_historical_data,
     delete_session,
     delete_sessions,
@@ -22,6 +24,7 @@ def test_database_lifecycle_and_schema():
         tables = {row["name"] for row in cursor.fetchall()}
         assert "search_sessions" in tables
         assert "sitters" in tables
+        assert "session_sitters" in tables
         assert "sitter_services" in tables
 
 def test_save_and_retrieve_session():
@@ -71,7 +74,18 @@ def test_save_and_retrieve_session():
     session = get_session_by_id(session_id)
     assert session is not None
     assert session["location"] == "Toronto, ON"
-    assert len(session["sitters"]) >= 1
+    assert len(session["sitters"]) == 1
+    assert session["sitters"][0]["name"] == "Alex P."
+
+def test_multi_session_combined_analysis():
+    init_db()
+    stats = {"min_price": 20, "avg_price": 20, "median_price": 20, "p25_price": 20, "p75_price": 20, "max_price": 20}
+    s1 = save_scrape_results("City A", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 1", "price_numeric": 20, "profile_url": "https://rover.com/members/sitter-1"}])
+    s2 = save_scrape_results("City B", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 2", "price_numeric": 30, "profile_url": "https://rover.com/members/sitter-2"}])
+
+    combined = get_sessions_sitters_combined([s1, s2])
+    assert len(combined["sessions"]) == 2
+    assert len(combined["sitters"]) == 2
 
 def test_delete_session_and_batch():
     init_db()
@@ -86,6 +100,14 @@ def test_delete_session_and_batch():
     # Test batch delete
     assert delete_sessions([s2]) == 1
     assert get_session_by_id(s2) is None
+
+def test_clear_entire_database():
+    init_db()
+    stats = {"min_price": 20, "avg_price": 20, "median_price": 20, "p25_price": 20, "p75_price": 20, "max_price": 20}
+    save_scrape_results("City A", "dog-walking", 5, 0, 0, 1, 1, stats, [{"name": "Sitter 1", "price_numeric": 20, "profile_url": "https://rover.com/members/sitter-1"}])
+    
+    clear_entire_database()
+    assert len(get_all_sessions()) == 0
 
 def test_etl_bulk_upsert_sitters_and_services():
     init_db()

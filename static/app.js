@@ -284,7 +284,7 @@ function setupPlatformSelector() {
     }
 }
 
-// ── 4. Search History List ────────────────────────────────────────────────────
+// ── 4. Search History & Multi-Session Studio ─────────────────────────────────
 let selectedHistorySessionIds = new Set();
 
 async function loadHistory() {
@@ -300,7 +300,7 @@ async function loadHistory() {
         }
 
         if (!data.sessions || data.sessions.length === 0) {
-            list.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem;">No searches saved yet.</p>`;
+            list.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem;">No searches saved yet in the database.</p>`;
             selectedHistorySessionIds.clear();
             updateHistoryDeleteToolbar();
             return;
@@ -321,6 +321,11 @@ async function loadHistory() {
             item.style.display = "flex";
             item.style.alignItems = "center";
             item.style.gap = "0.75rem";
+            item.style.padding = "0.75rem";
+            item.style.borderRadius = "var(--radius-sm)";
+            item.style.marginBottom = "0.5rem";
+            item.style.background = s.id === currentSessionId ? "rgba(59, 130, 246, 0.12)" : "var(--bg-card)";
+            item.style.border = s.id === currentSessionId ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)";
             
             const isChecked = selectedHistorySessionIds.has(s.id);
             const avgDisplay = s.avg_price ? `$${s.avg_price.toFixed(1)}` : "--";
@@ -330,14 +335,17 @@ async function loadHistory() {
                     <input type="checkbox" class="history-checkbox" data-session-id="${s.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
                 </div>
                 <div class="history-info" style="flex-grow: 1; cursor: pointer;">
-                    <h4>${escapeHtml(s.location)} (${s.total_sitters} sitters)</h4>
-                    <p>${escapeHtml(s.service_type)} • ${date} ${s.radius_km ? `• ${s.radius_km}km radius` : ''}</p>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <strong style="color: var(--text-heading); font-size: 0.9rem;">#${s.id} ${escapeHtml(s.location)}</strong>
+                        <span class="badge-stealth" style="font-size: 0.7rem; padding: 0.1rem 0.4rem;">${s.total_sitters} sitters</span>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">${escapeHtml(s.service_type)} &bull; ${date} ${s.radius_km ? `&bull; ${s.radius_km}km` : ''}</p>
                 </div>
                 <div class="history-stat" style="cursor: pointer; text-align: right;">
-                    <div class="avg">${avgDisplay}</div>
-                    <p style="font-size:0.7rem; color:var(--text-muted);">Session #${s.id}</p>
+                    <div class="avg" style="font-weight: 700; color: #10b981; font-size: 1.05rem;">${avgDisplay}</div>
+                    <p style="font-size:0.7rem; color:var(--text-muted); margin:0;">Avg Rate</p>
                 </div>
-                <button class="btn-delete-single" data-session-id="${s.id}" title="Delete this session from database" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.35rem 0.5rem; font-size: 1.1rem;">
+                <button class="btn-delete-single" data-session-id="${s.id}" title="Delete this session from database" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.35rem 0.5rem; font-size: 1.1rem; transition: transform 0.15s;">
                     🗑️
                 </button>
             `;
@@ -369,20 +377,35 @@ async function loadHistory() {
 }
 
 function updateHistoryDeleteToolbar() {
-    const btn = document.getElementById("btnBatchDeleteHistory");
+    const deleteBtn = document.getElementById("btnBatchDeleteHistory");
+    const analyzeBtnCount = document.getElementById("historyAnalyzeBtnCount");
     const countSpan = document.getElementById("historySelectedCount");
     const selectAllChk = document.getElementById("historySelectAllCheckbox");
+    const analyzeBtn = document.getElementById("btnAnalyzeSelectedHistory");
 
-    if (countSpan) countSpan.textContent = selectedHistorySessionIds.size;
-    if (btn) {
-        btn.style.display = selectedHistorySessionIds.size > 0 ? "inline-flex" : "none";
+    const count = selectedHistorySessionIds.size;
+    if (countSpan) countSpan.textContent = count;
+    if (analyzeBtnCount) analyzeBtnCount.textContent = count;
+
+    if (deleteBtn) {
+        deleteBtn.style.display = count > 0 ? "inline-flex" : "none";
     }
+
+    if (analyzeBtn) {
+        if (count > 0) {
+            analyzeBtn.style.opacity = "1";
+            analyzeBtn.removeAttribute("disabled");
+        } else {
+            analyzeBtn.style.opacity = "0.7";
+        }
+    }
+
     if (selectAllChk) {
         const allCheckboxes = document.querySelectorAll(".history-checkbox");
-        if (allCheckboxes.length > 0 && selectedHistorySessionIds.size === allCheckboxes.length) {
+        if (allCheckboxes.length > 0 && count === allCheckboxes.length) {
             selectAllChk.checked = true;
             selectAllChk.indeterminate = false;
-        } else if (selectedHistorySessionIds.size > 0) {
+        } else if (count > 0) {
             selectAllChk.checked = false;
             selectAllChk.indeterminate = true;
         } else {
@@ -395,6 +418,8 @@ function updateHistoryDeleteToolbar() {
 function setupHistoryBulkToolbar(sessions) {
     const selectAllChk = document.getElementById("historySelectAllCheckbox");
     const batchDeleteBtn = document.getElementById("btnBatchDeleteHistory");
+    const analyzeSelectedBtn = document.getElementById("btnAnalyzeSelectedHistory");
+    const wipeDbBtn = document.getElementById("btnWipeEntireDatabase");
 
     if (selectAllChk) {
         selectAllChk.onchange = (e) => {
@@ -408,11 +433,65 @@ function setupHistoryBulkToolbar(sessions) {
         };
     }
 
+    if (analyzeSelectedBtn) {
+        analyzeSelectedBtn.onclick = async () => {
+            const count = selectedHistorySessionIds.size;
+            if (count === 0) {
+                alert("Please check at least one session from the database list to analyze.");
+                return;
+            }
+
+            try {
+                analyzeSelectedBtn.disabled = true;
+                analyzeSelectedBtn.innerHTML = `<span class="spinner"></span> Analyzing ${count} Session(s)...`;
+
+                const res = await fetch("/api/history/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_ids: Array.from(selectedHistorySessionIds) })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.detail || "Failed to analyze selected sessions.");
+                }
+
+                const data = await res.json();
+                currentSessionId = data.session_ids[0];
+                currentRecords = data.records || [];
+                currentExcludedIndices.clear();
+                currentAutoOutliers = data.auto_outliers || [];
+                AppState.centerLat = data.center_lat || 43.6532;
+                AppState.centerLng = data.center_lng || -79.3832;
+
+                // Update Active Dataset Banner
+                const bannerTitle = document.getElementById("activeSessionTitle");
+                const bannerSub = document.getElementById("activeSessionSubtitle");
+                if (bannerTitle) bannerTitle.textContent = `Active Dataset: Selected Session(s) #${data.session_ids.join(", ")}`;
+                if (bannerSub) bannerSub.textContent = `Analyzing ${data.total_sitters} unique sitters from ${data.location}`;
+
+                renderResults(data.stats, currentRecords, data.location, data.service_type, currentSessionId);
+                loadHistory();
+
+                const resultsEl = document.getElementById("resultsContainer");
+                if (resultsEl) resultsEl.scrollIntoView({ behavior: "smooth" });
+
+                logToTerminal(`[✓] Successfully loaded & analyzed ${data.total_sitters} sitters from Session(s) #${data.session_ids.join(", ")}.`, "success");
+            } catch (err) {
+                console.error("Error analyzing selected sessions:", err);
+                alert(`Error analyzing sessions: ${err.message}`);
+            } finally {
+                analyzeSelectedBtn.disabled = false;
+                analyzeSelectedBtn.innerHTML = `⚡ Load & Analyze Selected (<span id="historyAnalyzeBtnCount">${selectedHistorySessionIds.size}</span>)`;
+            }
+        };
+    }
+
     if (batchDeleteBtn) {
         batchDeleteBtn.onclick = async () => {
             const count = selectedHistorySessionIds.size;
             if (count === 0) return;
-            if (!confirm(`Permanently delete ${count} selected search session(s)?`)) return;
+            if (!confirm(`Permanently delete ${count} selected search session(s) from the database?`)) return;
 
             try {
                 const res = await fetch("/api/history/delete-batch", {
@@ -424,23 +503,48 @@ function setupHistoryBulkToolbar(sessions) {
                 selectedHistorySessionIds.clear();
                 loadHistory();
                 loadTemporalTrends();
-                logToTerminal(`[✓] Deleted ${result.deleted_count || count} sessions.`, "success");
+                logToTerminal(`[✓] Permanently deleted ${result.deleted_count || count} session(s) from database.`, "success");
             } catch (err) {
                 console.error("Error deleting sessions:", err);
                 alert("Failed to delete selected sessions.");
             }
         };
     }
+
+    if (wipeDbBtn) {
+        wipeDbBtn.onclick = async () => {
+            if (!confirm("⚠️ WARNING: Are you sure you want to completely PURGE all database records, sessions, sitters, and start 100% fresh?")) return;
+
+            try {
+                const res = await fetch("/api/database/reset", { method: "POST" });
+                const result = await res.json();
+                
+                selectedHistorySessionIds.clear();
+                currentRecords = [];
+                currentExcludedIndices.clear();
+                currentStatsPayload = null;
+                document.getElementById("resultsContainer").style.display = "none";
+                
+                loadHistory();
+                loadTemporalTrends();
+                logToTerminal("[✓] Database completely purged and reset to 0 records.", "success");
+                alert("Database has been completely wiped and reset.");
+            } catch (err) {
+                console.error("Error resetting database:", err);
+                alert("Failed to reset database.");
+            }
+        };
+    }
 }
 
 async function deleteSingleSession(sessionId) {
-    if (!confirm(`Delete Search Session #${sessionId}?`)) return;
+    if (!confirm(`Permanently delete Search Session #${sessionId} from database?`)) return;
     try {
         await fetch(`/api/history/${sessionId}`, { method: "DELETE" });
         selectedHistorySessionIds.delete(sessionId);
         loadHistory();
         loadTemporalTrends();
-        logToTerminal(`[✓] Session #${sessionId} deleted.`, "success");
+        logToTerminal(`[✓] Session #${sessionId} permanently deleted from database.`, "success");
     } catch (err) {
         console.error("Error deleting session:", err);
     }
@@ -449,29 +553,32 @@ async function deleteSingleSession(sessionId) {
 async function selectSession(sessionId) {
     try {
         const res = await fetch(`/api/history/${sessionId}`);
+        if (!res.ok) {
+            alert(`Session #${sessionId} not found.`);
+            return;
+        }
         const session = await res.json();
         
         currentSessionId = session.id;
         currentRecords = session.sitters || [];
         currentExcludedIndices.clear();
-        currentAutoOutliers = [];
+        currentAutoOutliers = session.auto_outliers || [];
         AppState.centerLat = session.center_lat || 43.6532;
         AppState.centerLng = session.center_lng || -79.3832;
 
-        try {
-            const recRes = await fetch("/api/analytics/recalculate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_id: currentSessionId, records: currentRecords, excluded_indices: [] })
-            });
-            const recData = await recRes.json();
-            currentAutoOutliers = recData.auto_outliers || [];
-            renderResults(recData.stats, currentRecords, session.location, session.service_type, session.id);
-        } catch {
-            renderResults(session, currentRecords, session.location, session.service_type, session.id);
-        }
+        // Update Active Dataset Banner
+        const bannerTitle = document.getElementById("activeSessionTitle");
+        const bannerSub = document.getElementById("activeSessionSubtitle");
+        if (bannerTitle) bannerTitle.textContent = `Active Dataset: Session #${session.id} (${session.location})`;
+        if (bannerSub) bannerSub.textContent = `Analyzing ${currentRecords.length} sitters & real multi-service rates from database archive`;
 
+        renderResults(session.full_stats || session, currentRecords, session.location, session.service_type, session.id);
         loadHistory();
+
+        const resultsEl = document.getElementById("resultsContainer");
+        if (resultsEl) resultsEl.scrollIntoView({ behavior: "smooth" });
+
+        logToTerminal(`[✓] Loaded & analyzed Session #${session.id} (${session.location} - ${currentRecords.length} sitters).`, "success");
     } catch (err) {
         console.error("Error loading session details:", err);
     }
