@@ -1,10 +1,11 @@
 """
 Data Access Layer — Repository pattern for all database CRUD operations.
 
-Clean 3-table relational architecture:
+Relational architecture with exact session scoping:
 1. search_sessions  (audit log & session statistical summaries)
 2. sitters          (master unique sitter profiles + real postal code & coordinates)
-3. sitter_services  (1-to-many rate matrix per sitter)
+3. session_sitters  (exact session-to-sitter many-to-many relationship)
+4. sitter_services  (1-to-many rate matrix per sitter)
 """
 import logging
 from datetime import datetime
@@ -26,7 +27,10 @@ def get_all_sessions() -> List[Dict[str, Any]]:
 
 
 def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
-    """Returns a specific search session along with all sitters and their services."""
+    """
+    Returns a specific search session along with the exact sitters and their services
+    captured during that search session.
+    """
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM search_sessions WHERE id = ?", (session_id,))
@@ -39,21 +43,94 @@ def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
             """
             SELECT s.*
             FROM sitters s
-            WHERE s.location = ?
+            JOIN session_sitters ss ON s.id = ss.sitter_id
+            WHERE ss.session_id = ?
             ORDER BY s.rating DESC, s.reviews_count DESC
             """,
-            (result["location"],)
+            (session_id,)
         )
         sitters = [dict(s) for s in cursor.fetchall()]
         for s in sitters:
             cursor.execute(
-                "SELECT service_type, service_name, price_numeric, rate_unit, last_verified_at FROM sitter_services WHERE sitter_id = ? AND is_active = 1",
+                """
+                SELECT service_type, service_name, price_numeric, rate_unit, last_verified_at
+                FROM sitter_services
+                WHERE sitter_id = ? AND is_active = 1
+                ORDER BY price_numeric ASC
+                """,
                 (s["id"],)
             )
             s["services"] = [dict(srv) for srv in cursor.fetchall()]
+            if s.get("price_numeric") is None and s["services"]:
+                matched = next(
+                    (srv for srv in s["services"] if srv["service_type"] == result["service_type"]),
+                    s["services"][0]
+                )
+                s["price_numeric"] = matched["price_numeric"]
+                s["rate_unit"] = matched["rate_unit"]
         
         result["sitters"] = sitters
         return result
+
+
+def get_sessions_sitters_combined(session_ids: List[int]) -> Dict[str, Any]:
+    """
+    Returns combined details and all unique sitters across multiple user-selected sessions.
+    """
+    if not session_ids:
+        return {"sessions": [], "sitters": [], "total_sitters": 0}
+
+    placeholders = ",".join("?" for _ in session_ids)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"SELECT * FROM search_sessions WHERE id IN ({placeholders}) ORDER BY id DESC",
+            tuple(session_ids)
+        )
+        sessions = [dict(r) for r in cursor.fetchall()]
+        if not sessions:
+            return {"sessions": [], "sitters": [], "total_sitters": 0}
+
+        cursor.execute(
+            f"""
+            SELECT DISTINCT s.*
+            FROM sitters s
+            JOIN session_sitters ss ON s.id = ss.sitter_id
+            WHERE ss.session_id IN ({placeholders})
+            ORDER BY s.rating DESC, s.reviews_count DESC
+            """,
+            tuple(session_ids)
+        )
+        sitters = [dict(s) for s in cursor.fetchall()]
+        for s in sitters:
+            cursor.execute(
+                """
+                SELECT service_type, service_name, price_numeric, rate_unit, last_verified_at
+                FROM sitter_services
+                WHERE sitter_id = ? AND is_active = 1
+                ORDER BY price_numeric ASC
+                """,
+                (s["id"],)
+            )
+            s["services"] = [dict(srv) for srv in cursor.fetchall()]
+            if s.get("price_numeric") is None and s["services"]:
+                s["price_numeric"] = s["services"][0]["price_numeric"]
+                s["rate_unit"] = s["services"][0]["rate_unit"]
+
+        first_session = sessions[0]
+        locations = sorted(list(set(s["location"] for s in sessions if s.get("location"))))
+        service_types = set(s["service_type"] for s in sessions if s.get("service_type"))
+
+        return {
+            "sessions": sessions,
+            "session_ids": session_ids,
+            "location": ", ".join(locations) if locations else "Multiple Locations",
+            "service_type": list(service_types)[0] if len(service_types) == 1 else "all-services",
+            "center_lat": first_session.get("center_lat") or 43.6532,
+            "center_lng": first_session.get("center_lng") or -79.3832,
+            "sitters": sitters,
+            "total_sitters": len(sitters)
+        }
 
 
 def save_scrape_results(
@@ -68,7 +145,7 @@ def save_scrape_results(
     records: List[Dict[str, Any]],
 ) -> int:
     """
-    Saves search session aggregates and automatically upserts sitters + services (ETL).
+    Saves search session aggregates and automatically links the exact sitters + services (ETL).
     Returns the newly created session_id.
     """
     now = datetime.now().isoformat()
@@ -97,23 +174,31 @@ def save_scrape_results(
         )
         session_id = cursor.lastrowid or 0
 
-    # Bulk upsert records into sitters and sitter_services tables
-    upsert_sitters_and_services_bulk(records, location, "rover")
+    # Bulk upsert records into sitters and sitter_services tables AND link to session_id
+    upsert_sitters_and_services_bulk(records, location, "rover", session_id=session_id)
 
     logger.info("Saved search session %d with %d sitters.", session_id, len(records))
     return session_id
 
 
 def delete_session(session_id: int) -> bool:
-    """Deletes a single search session from the audit table."""
+    """
+    Deletes a single search session and cleans up orphan sitters without references.
+    """
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("DELETE FROM session_sitters WHERE session_id = ?", (session_id,))
         cursor.execute("DELETE FROM search_sessions WHERE id = ?", (session_id,))
-        return cursor.rowcount > 0
+        affected = cursor.rowcount
+        # Clean orphan sitters
+        cursor.execute("DELETE FROM sitters WHERE id NOT IN (SELECT DISTINCT sitter_id FROM session_sitters)")
+        return affected > 0
 
 
 def delete_sessions(session_ids: List[int]) -> int:
-    """Batch-deletes multiple search sessions."""
+    """
+    Batch-deletes multiple search sessions and cleans up orphan sitters.
+    """
     if not session_ids:
         return 0
     placeholders = ",".join("?" for _ in session_ids)
@@ -121,9 +206,33 @@ def delete_sessions(session_ids: List[int]) -> int:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
+            f"DELETE FROM session_sitters WHERE session_id IN ({placeholders})", ids_tuple
+        )
+        cursor.execute(
             f"DELETE FROM search_sessions WHERE id IN ({placeholders})", ids_tuple
         )
-        return cursor.rowcount
+        deleted_count = cursor.rowcount
+        # Clean orphan sitters
+        cursor.execute("DELETE FROM sitters WHERE id NOT IN (SELECT DISTINCT sitter_id FROM session_sitters)")
+        return deleted_count
+
+
+def clear_entire_database() -> Dict[str, Any]:
+    """
+    Purges all records from all database tables and resets SQLite auto-increment counters.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM session_sitters;")
+        cursor.execute("DELETE FROM sitter_services;")
+        cursor.execute("DELETE FROM sitters;")
+        cursor.execute("DELETE FROM search_sessions;")
+        try:
+            cursor.execute("DELETE FROM sqlite_sequence WHERE name IN ('search_sessions', 'sitters', 'sitter_services');")
+        except Exception:
+            pass
+        logger.info("Entire database purged and counters reset.")
+        return {"status": "success", "message": "Database completely wiped"}
 
 
 # ── Analytics Queries ──────────────────────────────────────────────────────────
@@ -182,12 +291,11 @@ def get_master_historical_data() -> List[Dict[str, Any]]:
 def upsert_sitters_and_services_bulk(
     sitter_profiles: List[Dict[str, Any]],
     location: str,
-    platform: str = "rover"
+    platform: str = "rover",
+    session_id: Optional[int] = None
 ) -> Dict[str, int]:
     """
-    Executes a high-performance batch upsert into the 2 core normalized tables:
-    1. Upserts unique sitters into 'sitters'.
-    2. Upserts each service rate into 'sitter_services'.
+    Executes a batch upsert into sitters, sitter_services, and links to session_sitters.
     """
     now = datetime.now().isoformat()
     sitters_count = 0
@@ -250,6 +358,16 @@ def upsert_sitters_and_services_bulk(
                 continue
             sitter_db_id = row["id"]
 
+            # Link Sitter to Session
+            if session_id:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO session_sitters (session_id, sitter_id)
+                    VALUES (?, ?)
+                    """,
+                    (session_id, sitter_db_id)
+                )
+
             # Upsert each real service rate offered by this sitter
             services = s.get("services", [])
             for srv in services:
@@ -282,7 +400,7 @@ def upsert_sitters_and_services_bulk(
                 )
                 services_count += 1
 
-    logger.info("Bulk Upsert: %d sitters, %d service prices.", sitters_count, services_count)
+    logger.info("Bulk Upsert: %d sitters, %d service prices (Session %s).", sitters_count, services_count, session_id)
     return {"sitters_upserted": sitters_count, "services_upserted": services_count}
 
 

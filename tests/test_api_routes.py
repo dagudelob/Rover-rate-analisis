@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.db.schema import init_db
+from app.db.repository import save_scrape_results
 
 @pytest.fixture(scope="module")
 def client():
@@ -36,6 +37,29 @@ def test_get_history_empty_or_list(client):
     data = response.json()
     assert "sessions" in data
     assert isinstance(data["sessions"], list)
+
+
+def test_analyze_selected_sessions_endpoint(client):
+    sample_records = [
+        {"name": "Sitter A", "price_numeric": 25.0, "reviews_count": 5, "profile_url": "https://rover.com/members/sitter-a"},
+        {"name": "Sitter B", "price_numeric": 35.0, "reviews_count": 10, "profile_url": "https://rover.com/members/sitter-b"},
+    ]
+    sid = save_scrape_results("Toronto", "dog-walking", 5, 0, 0, 1, 1, {"min_price": 25, "avg_price": 30, "median_price": 30, "p25_price": 25, "p75_price": 35, "max_price": 35}, sample_records)
+
+    payload = {"session_ids": [sid]}
+    response = client.post("/api/history/analyze", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["total_sitters"] == 2
+    assert "stats" in data
+
+
+def test_database_reset_endpoint(client):
+    response = client.post("/api/database/reset")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
 
 
 def test_analytics_recalculate_empty(client):

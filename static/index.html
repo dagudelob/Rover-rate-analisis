@@ -203,6 +203,22 @@
     <!-- ACTIVE RESULTS CONTAINER -->
     <div id="resultsContainer" style="display: none;">
 
+      <!-- ACTIVE SESSION / DATASET BANNER -->
+      <div id="activeSessionBanner" style="margin-bottom: 1.5rem; background: linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.12)); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: var(--radius-md); padding: 0.85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 34px; height: 34px; border-radius: var(--radius-sm); background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #60a5fa;">📊</div>
+          <div>
+            <div id="activeSessionTitle" style="font-weight: 700; color: var(--text-heading); font-size: 0.95rem;">Active Dataset: Live Scrape</div>
+            <div id="activeSessionSubtitle" style="font-size: 0.8rem; color: var(--text-muted);">Analyzing real-time extracted sitters</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <a href="#section-database" class="btn-secondary" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+            📂 Pick Another Session from DB
+          </a>
+        </div>
+      </div>
+
       <!-- DEDICATED SERVICE ANALYTICS SWITCHER TABS -->
       <div class="service-tabs-container" style="margin-bottom: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -628,30 +644,48 @@
           <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <h3 class="card-title" style="margin-bottom: 0;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-              Historical Search Database & Temporal Trends
+              Historical Search Database & Multi-Session Studio
             </h3>
             <span id="historySessionsBadge" class="badge-stealth" style="font-size: 0.75rem;">0 Sessions</span>
           </div>
-          <button id="btnToggleHistorySection" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
-            <span id="historyToggleText">Collapse Section</span>
-            <svg id="historyToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
-          </button>
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button id="btnWipeEntireDatabase" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.8rem; padding: 0.4rem 0.85rem;" title="Completely purge all database tables and start fresh">
+              ⚠️ Wipe Database
+            </button>
+            <button id="btnToggleHistorySection" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+              <span id="historyToggleText">Collapse Section</span>
+              <svg id="historyToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+          </div>
         </div>
 
         <div id="historyCollapsibleWrapper" class="collapsible-table-wrapper">
-          <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 1.5rem; align-items: start;">
+          <!-- Multi-Session Actions Toolbar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-heading); font-weight: 600; cursor: pointer;">
+                <input type="checkbox" id="historySelectAllCheckbox" style="cursor: pointer; width: 16px; height: 16px;">
+                Select All
+              </label>
+              <span style="font-size: 0.82rem; color: var(--text-muted);">
+                Selected: <strong id="historySelectedCount" style="color: #60a5fa;">0</strong> session(s)
+              </span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <button id="btnAnalyzeSelectedHistory" class="btn-primary" style="font-size: 0.82rem; padding: 0.45rem 1rem; background: linear-gradient(135deg, #10b981, #059669);" title="Analyze the sitters belonging specifically to the selected sessions">
+                ⚡ Load & Analyze Selected (<span id="historyAnalyzeBtnCount">0</span>)
+              </button>
+              <button id="btnBatchDeleteHistory" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.82rem; padding: 0.45rem 0.85rem; display: none;" title="Delete selected sessions from database">
+                🗑️ Delete Selected
+              </button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.35fr 1.65fr; gap: 1.5rem; align-items: start;">
             <!-- History List Column -->
             <div>
-              <div id="historyDeleteToolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
-                  <input type="checkbox" id="historySelectAllCheckbox" style="cursor: pointer;">
-                  Select All Sessions
-                </label>
-                <button id="btnBatchDeleteHistory" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 0.78rem; padding: 0.3rem 0.6rem; display: none;" title="Delete selected sessions">
-                  🗑️ Delete Selected (<span id="historySelectedCount">0</span>)
-                </button>
-              </div>
-              <div id="historyList" class="history-list" style="max-height: 280px; overflow-y: auto;">
+              <div id="historyList" class="history-list" style="max-height: 340px; overflow-y: auto;">
                 <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem;">Loading search archive...</p>
               </div>
             </div>
@@ -659,7 +693,7 @@
             <!-- Temporal Trends Chart Column -->
             <div>
               <h4 style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem;">Longitudinal Price Trends Across Sessions</h4>
-              <div class="chart-wrapper" style="height: 240px;">
+              <div class="chart-wrapper" style="height: 280px;">
                 <canvas id="temporalTrendsChart"></canvas>
               </div>
             </div>

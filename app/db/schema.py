@@ -1,10 +1,11 @@
 """
 Database schema initialization.
 
-Defines the 3 core normalized tables with support for real postal_code, lat, lng:
+Defines the normalized tables:
 1. search_sessions  - Audit history & aggregate statistical snapshots
 2. sitters          - Master unique sitter profiles (member_id, name, postal_code, neighborhood, lat, lng)
-3. sitter_services  - 1-to-many normalized service rates per sitter
+3. session_sitters  - Exact many-to-many relationship linking sitters captured in each search session
+4. sitter_services  - 1-to-many normalized service rates per sitter
 """
 import logging
 from app.db.connection import get_db
@@ -14,7 +15,7 @@ logger = logging.getLogger("rover.db.schema")
 
 def init_db() -> None:
     """
-    Initializes the simplified 3-table database schema and performance indexes.
+    Initializes the database schema, junction tables, and performance indexes.
     Safe to call on every startup — all statements use IF NOT EXISTS.
     """
     with get_db() as conn:
@@ -42,7 +43,7 @@ def init_db() -> None:
         )
         """)
 
-        # ── 2. Normalized Master Sitter Profiles (1 Row per Unique Sitter) ───────
+        # ── 2. Master Sitter Profiles (1 Row per Unique Sitter) ─────────────────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sitters (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,7 +65,18 @@ def init_db() -> None:
         )
         """)
 
-        # ── 3. Normalized Sitter Services & Real Prices (Multi-Service Rate Table) ─
+        # ── 3. Session-to-Sitter Bridge (Exact Session Scope) ───────────────────
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS session_sitters (
+            session_id       INTEGER NOT NULL,
+            sitter_id        INTEGER NOT NULL,
+            PRIMARY KEY (session_id, sitter_id),
+            FOREIGN KEY (session_id) REFERENCES search_sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (sitter_id) REFERENCES sitters(id) ON DELETE CASCADE
+        )
+        """)
+
+        # ── 4. Sitter Services & Real Prices (Multi-Service Rate Table) ────────
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS sitter_services (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +108,9 @@ def init_db() -> None:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_timestamp ON search_sessions(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_member_id ON sitters(member_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitters_postal_code ON sitters(postal_code)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_sitters_session ON session_sitters(session_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_sitters_sitter ON session_sitters(sitter_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_fk ON sitter_services(sitter_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sitter_services_type ON sitter_services(service_type)")
 
-    logger.info("Database schema initialized with 3 clean tables: search_sessions, sitters, sitter_services.")
+    logger.info("Database schema initialized with session_sitters relation.")

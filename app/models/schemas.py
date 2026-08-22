@@ -25,6 +25,12 @@ class SitterExclusionRequest(BaseModel):
 
 
 class DeleteSessionsRequest(BaseModel):
-    """Request body for DELETE /api/history (batch delete)."""
+    """Request body for DELETE/POST /api/history (batch delete)."""
+
+    session_ids: List[int]
+
+
+class AnalyzeSessionsRequest(BaseModel):
+    """Request body for POST /api/history/analyze."""
 
     session_ids: List[int]
