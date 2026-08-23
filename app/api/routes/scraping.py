@@ -50,7 +50,7 @@ async def get_services(platform: str = Query("rover", description="Marketplace p
 @router.get("/scrape/stream")
 async def scrape_stream(
     location: str = Query(..., description="Geographic location or postal code"),
-    service_type: str = Query("dog-walking", description="Service category"),
+    service_type: str = Query("overnight-boarding", description="Service category"),
     platform: str = Query("rover", description="Marketplace platform (rover, wag, care)"),
     radius_km: Optional[float] = Query(None, ge=0.5, le=100.0, description="Custom distance radius in km"),
     max_pages: int = Query(5, ge=1, le=15, description="Max pagination depth"),
