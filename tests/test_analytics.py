@@ -1,7 +1,14 @@
 import pytest
 import pandas as pd
 import numpy as np
-from app.services.analytics import calculate_market_statistics, calculate_pricing_sweet_spot, detect_outliers_iqr
+from app.services.analytics import (
+    calculate_market_statistics,
+    calculate_pricing_sweet_spot,
+    detect_outliers_iqr,
+    calculate_hedonic_decomposition,
+    fit_parametric_distribution,
+    calculate_spatial_neighborhood_premiums,
+)
 
 def test_market_statistics_basic():
     records = [
@@ -23,6 +30,44 @@ def test_market_statistics_basic():
     assert stats["pricing_optimizer"]["sweet_spot_price"] is not None
     assert "per_service_analytics" in stats
     assert "dog-walking" in stats["per_service_analytics"]
+    assert "hedonic_decomposition" in stats
+    assert "parametric_distribution" in stats
+    assert "spatial_premiums" in stats
+
+def test_hedonic_decomposition_regression():
+    records = [
+        {"name": "A", "headline": "Star Sitter", "price_numeric": 35.0, "reviews_count": 15},
+        {"name": "B", "headline": "Star Sitter", "price_numeric": 45.0, "reviews_count": 40},
+        {"name": "C", "headline": "Star Sitter", "price_numeric": 55.0, "reviews_count": 80},
+        {"name": "D", "headline": "Friendly walker", "price_numeric": 22.0, "reviews_count": 2},
+        {"name": "E", "headline": "Reliable care", "price_numeric": 26.0, "reviews_count": 10},
+        {"name": "F", "headline": "Passionate sitter", "price_numeric": 28.0, "reviews_count": 18},
+    ]
+    res = calculate_hedonic_decomposition(records)
+    assert res["status"] == "success"
+    assert res["r_squared"] > 0
+    assert res["review_elasticity"] is not None
+    assert res["star_sitter_premium_pct"] is not None
+
+def test_parametric_lognormal_distribution_fit():
+    prices = [20.0, 25.0, 28.0, 30.0, 32.0, 35.0, 45.0, 60.0]
+    fit = fit_parametric_distribution(prices)
+    assert fit["status"] == "success"
+    assert "mu" in fit and "sigma" in fit
+    assert len(fit["curve"]) > 0
+
+def test_spatial_neighborhood_premiums():
+    records = [
+        {"name": "A", "price_numeric": 60.0, "postal_code": "M5V", "neighborhood": "King West"},
+        {"name": "B", "price_numeric": 65.0, "postal_code": "M5V", "neighborhood": "King West"},
+        {"name": "C", "price_numeric": 30.0, "postal_code": "M1B", "neighborhood": "Malvern"},
+        {"name": "D", "price_numeric": 32.0, "postal_code": "M1B", "neighborhood": "Malvern"},
+    ]
+    premiums = calculate_spatial_neighborhood_premiums(records, metro_median=45.0)
+    assert len(premiums) == 2
+    fsa_map = {p["postal_code"]: p for p in premiums}
+    assert fsa_map["M5V"]["premium_pct"] > 0
+    assert fsa_map["M1B"]["premium_pct"] < 0
 
 def test_market_statistics_multi_service_separation():
     records = [
