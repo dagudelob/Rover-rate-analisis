@@ -1,12 +1,18 @@
 import re
 import pytest
-from app.services.scraper.parser import extract_price
+from app.services.scraper.parser import (
+    extract_price,
+    parse_sitter_name_and_headline,
+    build_sitter_record,
+    extract_all_services_and_prices,
+)
+from app.services.scraper.geocoding import extract_postal_code_fsa, geocode_postal_code_with_city
+from app.services.scraper.postal_data import lookup_fsa_data
 
 def extract_service_price(card_text: str, service_type: str, price_text: str = ""):
     """Helper forwarding to parser's extract_price, returning (raw_price, price_numeric, rate_unit)."""
     price_numeric, raw_price, rate_unit = extract_price(price_text, card_text, service_type)
     return raw_price, price_numeric, rate_unit
-
 
 
 def test_dog_walking_price_extraction():
@@ -42,6 +48,59 @@ def test_bio_dollar_amounts_do_not_leak():
     assert num == 24.0
     assert raw == "$24"
     assert unit == "per walk"
+
+
+def test_fsa_extraction_and_offline_lookup():
+    card = "Toronto, ON, M5V"
+    postal = extract_postal_code_fsa(card)
+    assert postal == "M5V"
+    
+    fsa_info = lookup_fsa_data(postal)
+    assert fsa_info is not None
+    lat, lng, hood = fsa_info
+    assert round(lat, 2) == 43.64
+    assert round(lng, 2) == -79.40
+    assert "Entertainment District" in hood or "King West" in hood
+
+
+def test_parse_sitter_name_and_headline_with_fsa():
+    card = """
+    1. Dustin T.Star Sitter
+    Safe, Fun and Reliable Pet Care 🌈
+    Toronto, ON, M4V
+    $28
+    total per walk
+    5.0 out of 5 stars
+    • 6 reviews
+    """
+    name, headline, hood, postal, lat, lng = parse_sitter_name_and_headline(
+        "1. Dustin T.Star Sitter", card, "https://rover.com/members/dustin-t"
+    )
+    assert name == "Dustin T."
+    assert headline == "Safe, Fun and Reliable Pet Care 🌈"
+    assert postal == "M4V"
+    assert lat is not None and lng is not None
+    assert round(lat, 2) == 43.69
+    assert round(lng, 2) == -79.40
+    assert "Summerhill" in hood or "Forest Hill" in hood
+
+
+def test_build_sitter_record_with_fsa_coordinates():
+    card = {
+        "url": "https://rover.com/members/dustin-t",
+        "extractedName": "1. Dustin T.Star Sitter",
+        "priceText": "$28\ntotal per walk",
+        "neighborhood": "",
+        "cardText": "1. Dustin T.Star Sitter\nSafe, Fun and Reliable Pet Care 🌈\nToronto, ON, M4V\n$28\ntotal per walk\n5.0 out of 5 stars\n• 6 reviews",
+        "photoUrl": "https://example.com/dustin.jpg"
+    }
+    record = build_sitter_record(card, "dog-walking", "Toronto, ON", center_lat=43.6532, center_lng=-79.3832)
+    assert record is not None
+    assert record["name"] == "Dustin T."
+    assert record["postal_code"] == "M4V"
+    assert record["lat"] is not None
+    assert record["lat"] != 43.6532  # Resolved to M4V centroid (43.6864), not generic city center!
+    assert round(record["lat"], 2) == 43.69
 
 
 def test_overnight_boarding_service_matching():
@@ -82,8 +141,6 @@ def test_day_care_service_matching():
 
 
 def test_all_services_master_catalog_extraction():
-    from app.services.scraper.parser import extract_all_services_and_prices
-
     card = """
     1. Taylor B.
     $25 per walk
@@ -98,4 +155,3 @@ def test_all_services_master_catalog_extraction():
     assert types["overnight-boarding"] == 65.0
     assert types["drop-in-visits"] == 20.0
     assert types["day-care"] == 35.0
-
