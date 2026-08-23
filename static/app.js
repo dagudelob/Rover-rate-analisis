@@ -83,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupForm();
     setupOutlierToolbar();
     setupSitterTableFilters();
+    setupProfitSimulator();
 
     if (window.renderMathInElement) {
         renderMathInElement(document.body, {
@@ -253,6 +254,7 @@ function switchActiveServiceView(serviceTab) {
     
     // Update Map with Real Postal Centroids and Rates for active service
     renderHeatmap(currentRecords, AppState.centerLat, AppState.centerLng, serviceTab);
+    renderEconometricModels(currentStatsPayload);
 }
 
 // ── 3. Service Selector ───────────────────────────────────────────────────────
@@ -878,25 +880,28 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
 
 // ── 8. Statistical Charts ─────────────────────────────────────────────────────
 
-function renderPriceHistogram(distribution) {
+function renderPriceHistogram(distribution, parametricCurve) {
     const ctx = document.getElementById("priceDistributionChart").getContext("2d");
     if (priceChartInstance) priceChartInstance.destroy();
 
     const labels = distribution.map(d => d.range);
     const data = distribution.map(d => d.count);
 
-    priceChartInstance = new Chart(ctx, {
+    const datasets = [{
         type: "bar",
+        label: "Observed Sitters",
+        data: data.length ? data : [0],
+        backgroundColor: "rgba(59, 130, 246, 0.7)",
+        borderColor: "#3b82f6",
+        borderWidth: 1.5,
+        borderRadius: 6,
+        order: 2,
+    }];
+
+    priceChartInstance = new Chart(ctx, {
         data: {
             labels: labels.length ? labels : ["No data"],
-            datasets: [{
-                label: "Sitters Count",
-                data: data.length ? data : [0],
-                backgroundColor: "rgba(59, 130, 246, 0.7)",
-                borderColor: "#3b82f6",
-                borderWidth: 1.5,
-                borderRadius: 6
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -1686,3 +1691,116 @@ function escapeHtml(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+// ── 9. Econometric Hedonic Model & Spatial Premiums ─────────────────────────────
+function renderEconometricModels(stats) {
+    if (!stats) return;
+
+    // 1. Hedonic Regression Model Output
+    const hedonic = stats.hedonic_decomposition || {};
+    const r2Badge = document.getElementById("hedonicR2Badge");
+    const elReviewElasticity = document.getElementById("hedonicReviewElasticity");
+    const elReviewDesc = document.getElementById("hedonicReviewDesc");
+    const elStarPremium = document.getElementById("hedonicStarPremium");
+    const elStarDesc = document.getElementById("hedonicStarDesc");
+    const elBaseRate = document.getElementById("hedonicBaseRate");
+
+    if (hedonic.status === "success") {
+        if (r2Badge) r2Badge.textContent = `Model Fit R²: ${(hedonic.r_squared * 100).toFixed(1)}% (N=${hedonic.sample_size})`;
+        if (elReviewElasticity) elReviewElasticity.textContent = `+${(hedonic.review_elasticity * 100).toFixed(1)}%`;
+        if (elReviewDesc && hedonic.interpretation) elReviewDesc.textContent = hedonic.interpretation.review_impact;
+        if (elStarPremium) elStarPremium.textContent = `${hedonic.star_sitter_premium_pct >= 0 ? '+' : ''}${hedonic.star_sitter_premium_pct.toFixed(1)}%`;
+        if (elStarDesc && hedonic.interpretation) elStarDesc.textContent = hedonic.interpretation.star_badge_impact;
+        if (elBaseRate) elBaseRate.textContent = `$${hedonic.base_baseline_rate.toFixed(2)}`;
+    } else {
+        if (r2Badge) r2Badge.textContent = "Model Fit: Insufficient Data (<6 sitters)";
+        if (elReviewElasticity) elReviewElasticity.textContent = "--";
+        if (elStarPremium) elStarPremium.textContent = "--";
+        if (elBaseRate) elBaseRate.textContent = "$--";
+    }
+
+    // 2. Spatial Location Quotients & Neighborhood Premiums Table
+    const spatialList = document.getElementById("spatialPremiumsList");
+    if (spatialList) {
+        const premiums = stats.spatial_premiums || [];
+        if (premiums.length === 0) {
+            spatialList.innerHTML = `<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 1rem;">No spatial data available yet.</p>`;
+        } else {
+            spatialList.innerHTML = "";
+            premiums.forEach(p => {
+                const item = document.createElement("div");
+                item.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.82rem;";
+                
+                const sign = p.premium_pct >= 0 ? "+" : "";
+                const color = p.premium_pct >= 15 ? "#10b981" : (p.premium_pct <= -15 ? "#ef4444" : "#fbbf24");
+                
+                item.innerHTML = `
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="color: #fff; font-weight: 600;">📮 ${escapeHtml(p.postal_code)} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.78rem;">(${p.sitters_count} sitters)</span></span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${escapeHtml(p.neighborhood)}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: ${color};">${sign}${p.premium_pct}%</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">$${p.median_price} med</div>
+                    </div>
+                `;
+                spatialList.appendChild(item);
+            });
+        }
+    }
+}
+
+// ── 10. Platform Fee & Net Profit Simulator ────────────────────────────────────
+function setupProfitSimulator() {
+    const rateInput = document.getElementById("simListedRate");
+    const nightsInput = document.getElementById("simNightsCount");
+    const petsInput = document.getElementById("simPetsCount");
+    const constantCareToggle = document.getElementById("simConstantCareToggle");
+
+    function calculateProfit() {
+        const baseRate = parseFloat(rateInput?.value) || 65;
+        const nights = parseInt(nightsInput?.value) || 1;
+        const pets = parseInt(petsInput?.value) || 1;
+        const isConstantCare = constantCareToggle?.checked || false;
+
+        // Additional pets typically charged at 50% extra
+        const petMultiplier = 1 + (pets - 1) * 0.5;
+        // Constant care premium: +45%
+        const constantCareMultiplier = isConstantCare ? 1.45 : 1.0;
+
+        const effectiveRatePerNight = baseRate * petMultiplier * constantCareMultiplier;
+        const sitterSubtotal = effectiveRatePerNight * nights;
+
+        // Rover takes 20% from the sitter's listed earnings
+        const netBankPayout = sitterSubtotal * 0.80;
+
+        // Client pays listed subtotal + 11% Rover service fee (capped at $50 on Rover, but standard 11%)
+        const clientBookingFee = Math.min(50, sitterSubtotal * 0.11);
+        const clientTotalAtCheckout = sitterSubtotal + clientBookingFee;
+
+        // Total platform take = Sitter 20% fee + Client 11% fee
+        const totalPlatformTake = (sitterSubtotal * 0.20) + clientBookingFee;
+
+        // Update DOM
+        const elPayout = document.getElementById("simNetPayout");
+        const elClientTotal = document.getElementById("simClientTotal");
+        const elRoverCut = document.getElementById("simRoverCut");
+        const elRecommended = document.getElementById("simRecommendedListing");
+
+        if (elPayout) elPayout.textContent = `$${netBankPayout.toFixed(2)}`;
+        if (elClientTotal) elClientTotal.textContent = `$${clientTotalAtCheckout.toFixed(2)}`;
+        if (elRoverCut) elRoverCut.textContent = `$${totalPlatformTake.toFixed(2)}`;
+        
+        // Sitter wants to net $60/unit -> List at 60 / 0.8 = $75
+        const targetRateForNet60 = (60.0 / 0.80) * (isConstantCare ? 1.45 : 1.0);
+        if (elRecommended) elRecommended.textContent = `$${targetRateForNet60.toFixed(2)}`;
+    }
+
+    if (rateInput) rateInput.addEventListener("input", calculateProfit);
+    if (nightsInput) nightsInput.addEventListener("input", calculateProfit);
+    if (petsInput) petsInput.addEventListener("input", calculateProfit);
+    if (constantCareToggle) constantCareToggle.addEventListener("change", calculateProfit);
+
+    calculateProfit();
+}
+

@@ -324,6 +324,9 @@ def calculate_market_statistics(
 
     service_comparisons = calculate_cross_service_stats(active_records)
     neighborhood_breakdown = calculate_neighborhood_stats(active_records)
+    hedonic_decomposition = calculate_hedonic_decomposition(records, excluded_indices)
+    parametric_distribution = fit_parametric_distribution(prices.tolist())
+    spatial_premiums = calculate_spatial_neighborhood_premiums(active_records, float(prices.median()))
 
     return {
         "total_sitters": len(records),
@@ -348,6 +351,9 @@ def calculate_market_statistics(
         "neighborhood_breakdown": neighborhood_breakdown,
         "per_service_analytics": per_service_analytics,
         "pricing_optimizer": optimizer_data,
+        "hedonic_decomposition": hedonic_decomposition,
+        "parametric_distribution": parametric_distribution,
+        "spatial_premiums": spatial_premiums,
     }
 
 
@@ -485,3 +491,170 @@ def detect_outliers_iqr(records: List[Dict[str, Any]]) -> List[int]:
         idx for idx in valid_indices
         if float(records[idx]["price_numeric"]) < lower or float(records[idx]["price_numeric"]) > upper
     ]
+
+
+# ── Advanced Econometrics & Data Science Engines ───────────────────────────────
+
+def calculate_hedonic_decomposition(records: List[Dict[str, Any]], excluded_indices: Optional[set] = None) -> Dict[str, Any]:
+    """
+    Executes a Semi-Log Hedonic Pricing Model with Heteroskedasticity-Consistent (HC1) Standard Errors.
+    Model: ln(Price_i) = beta_0 + beta_review * ln(Reviews_i + 1) + beta_star * (StarSitter_i) + e_i
+    """
+    if excluded_indices is None:
+        excluded_indices = set()
+
+    valid = [
+        r for idx, r in enumerate(records)
+        if idx not in excluded_indices and r.get("price_numeric") is not None and float(r["price_numeric"]) > 0
+    ]
+    if len(valid) < 6:
+        return {
+            "status": "insufficient_data",
+            "sample_size": len(valid),
+            "review_elasticity": None,
+            "star_sitter_premium_pct": None,
+            "r_squared": None,
+            "f_stat": None,
+            "coefficients": {},
+        }
+
+    prices = np.array([float(r["price_numeric"]) for r in valid])
+    log_p = np.log(prices)
+    reviews = np.array([float(r.get("reviews_count") or 0) for r in valid])
+    log_rev = np.log(np.maximum(reviews, 0.0) + 1.0)
+    has_star = np.array([
+        1.0 if ("star sitter" in (r.get("headline") or "").lower() or "star sitter" in (r.get("name") or "").lower()) else 0.0
+        for r in valid
+    ])
+
+    # Design matrix: [Constant, ln(Reviews + 1), StarSitter]
+    X = np.column_stack([np.ones_like(log_p), log_rev, has_star])
+    n, k = X.shape
+    df_resid = n - k
+
+    try:
+        XtX = X.T @ X
+        if np.linalg.matrix_rank(XtX) < k or df_resid <= 0:
+            raise np.linalg.LinAlgError("Singular matrix")
+
+        beta = np.linalg.inv(XtX) @ X.T @ log_p
+        y_pred = X @ beta
+        e = log_p - y_pred
+
+        ss_res = float(np.sum(e ** 2))
+        ss_tot = float(np.sum((log_p - np.mean(log_p)) ** 2))
+        r_squared = max(0.0, 1.0 - (ss_res / ss_tot)) if ss_tot > 0 else 0.0
+
+        # White HC1 robust covariance matrix: (X'X)^(-1) (X' diag(e^2) X) (X'X)^(-1) * (n / df_resid)
+        hc1_cov = np.linalg.inv(XtX) @ (X.T @ np.diag(e ** 2) @ X) @ np.linalg.inv(XtX) * (n / max(1, df_resid))
+        se = np.sqrt(np.maximum(np.diag(hc1_cov), 1e-10))
+        t_stats = beta / se
+
+        review_elasticity = round(float(beta[1]), 4)
+        star_premium_pct = round(float((np.exp(beta[2]) - 1.0) * 100.0), 2)
+        base_intercept = round(float(np.exp(beta[0])), 2)
+
+        return {
+            "status": "success",
+            "sample_size": n,
+            "r_squared": round(r_squared, 3),
+            "review_elasticity": review_elasticity,
+            "star_sitter_premium_pct": star_premium_pct,
+            "base_baseline_rate": base_intercept,
+            "interpretation": {
+                "review_impact": f"A 100% increase in verified reviews correlates with a +{round(review_elasticity * 100, 1)}% pricing premium.",
+                "star_badge_impact": f"The 'Star Sitter' badge commands an average +{star_premium_pct}% price premium holding reviews constant."
+            },
+            "coefficients": {
+                "intercept": {"value": round(float(beta[0]), 4), "se": round(float(se[0]), 4), "t": round(float(t_stats[0]), 2)},
+                "log_reviews": {"value": round(float(beta[1]), 4), "se": round(float(se[1]), 4), "t": round(float(t_stats[1]), 2)},
+                "star_sitter": {"value": round(float(beta[2]), 4), "se": round(float(se[2]), 4), "t": round(float(t_stats[2]), 2)},
+            }
+        }
+    except Exception as exc:
+        logger.warning("Hedonic regression failed: %s", exc)
+        return {
+            "status": "error",
+            "message": str(exc),
+            "sample_size": len(valid)
+        }
+
+
+def fit_parametric_distribution(prices: List[float]) -> Dict[str, Any]:
+    """
+    Fits a theoretical Log-Normal probability density function to market prices.
+    Returns density curve coordinates for overlay on empirical histograms.
+    """
+    if len(prices) < 4:
+        return {"status": "insufficient_data", "curve": []}
+
+    p_arr = np.array(prices, dtype=float)
+    p_arr = p_arr[p_arr > 0]
+    if len(p_arr) < 4:
+        return {"status": "insufficient_data", "curve": []}
+
+    log_vals = np.log(p_arr)
+    mu = float(np.mean(log_vals))
+    sigma = float(np.std(log_vals)) or 0.25
+
+    x_min = max(5.0, float(np.min(p_arr)) * 0.8)
+    x_max = float(np.max(p_arr)) * 1.2
+    x_grid = np.linspace(x_min, x_max, 40)
+
+    # Log-normal PDF: 1 / (x * sigma * sqrt(2*pi)) * exp( - (ln(x) - mu)^2 / (2 * sigma^2) )
+    pdf_vals = (1.0 / (x_grid * sigma * np.sqrt(2.0 * np.pi))) * np.exp(-((np.log(x_grid) - mu) ** 2) / (2.0 * sigma ** 2))
+
+    return {
+        "status": "success",
+        "mu": round(mu, 3),
+        "sigma": round(sigma, 3),
+        "mode_price": round(float(np.exp(mu - sigma ** 2)), 1),
+        "curve": [{"price": round(float(x), 1), "density": round(float(y), 5)} for x, y in zip(x_grid, pdf_vals)]
+    }
+
+
+def calculate_spatial_neighborhood_premiums(records: List[Dict[str, Any]], metro_median: float) -> List[Dict[str, Any]]:
+    """
+    Computes spatial Location Quotients and Premium Indices grouped by FSA postal code and neighborhood.
+    """
+    groups: Dict[str, List[float]] = {}
+    hood_labels: Dict[str, str] = {}
+
+    for r in records:
+        price = r.get("price_numeric")
+        if price is None or price <= 0:
+            continue
+        postal = r.get("postal_code") or "OTHER"
+        hood = r.get("neighborhood") or r.get("location_query") or postal
+
+        if postal not in groups:
+            groups[postal] = []
+            hood_labels[postal] = hood
+        groups[postal].append(float(price))
+
+    results = []
+    for postal, p_list in groups.items():
+        if len(p_list) == 0:
+            continue
+        p_median = float(np.median(p_list))
+        p_avg = float(np.mean(p_list))
+        premium_pct = round(((p_median / max(1.0, metro_median)) - 1.0) * 100.0, 1)
+
+        tier = "Balanced (Metro Average)"
+        if premium_pct >= 15.0:
+            tier = "🟢 Premium Tier"
+        elif premium_pct <= -15.0:
+            tier = "🔴 Value / Discount Zone"
+
+        results.append({
+            "postal_code": postal,
+            "neighborhood": hood_labels.get(postal, postal),
+            "sitters_count": len(p_list),
+            "median_price": round(p_median, 1),
+            "avg_price": round(p_avg, 1),
+            "premium_pct": premium_pct,
+            "tier": tier,
+        })
+
+    results.sort(key=lambda x: x["premium_pct"], reverse=True)
+    return results
