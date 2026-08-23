@@ -1,8 +1,8 @@
 """
 Geocoding utilities for the Rover scraper.
 
-Converts human-readable location strings and 3-character Postal Code FSAs (e.g. M5V, M4Y, M6K)
-to geographic coordinates with in-memory caching.
+Converts human-readable location strings and Postal Code FSAs (e.g. M5V, M4Y, M6K, V6B, H2Y, etc.)
+to authentic geographic coordinates using offline high-precision FSA centroid datasets and cached fallback lookups.
 """
 import json
 import logging
@@ -10,6 +10,8 @@ import re
 import urllib.parse
 import urllib.request
 from typing import Dict, Optional, Tuple
+
+from app.services.scraper.postal_data import lookup_fsa_data
 
 logger = logging.getLogger("rover.services.scraper.geocoding")
 
@@ -19,12 +21,12 @@ _GEOCODE_CACHE: Dict[str, Optional[Tuple[float, float]]] = {}
 
 def extract_postal_code_fsa(text: str) -> Optional[str]:
     """
-    Extracts Canadian 3-character FSA (e.g. 'M5V', 'M4Y', 'K1A') or US 5-digit/3-digit zip.
+    Extracts Canadian 3-character FSA (e.g. 'M5V', 'M4Y', 'K1A', 'V6B', 'H2Y') or US 5-digit zip.
     """
     if not text:
         return None
 
-    # Canadian FSA pattern: Letter-Digit-Letter (e.g. M5V, V6B)
+    # Canadian FSA pattern: Letter-Digit-Letter (e.g. M5V, V6B, H2X, T2P)
     canadian_match = re.search(r"\b([A-CEGHJ-NPR-TVXY]\d[A-CEGHJ-NPR-TV-Z])\b", text, re.IGNORECASE)
     if canadian_match:
         return canadian_match.group(1).upper()
@@ -52,7 +54,7 @@ def geocode_location(location_name: str) -> Optional[Tuple[float, float]]:
     try:
         encoded = urllib.parse.quote(location_name)
         url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&limit=1"
-        req = urllib.request.Request(url, headers={"User-Agent": "RoverMarketIntelligence/3.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "RoverMarketIntelligence/3.5 (contact@roverintel.local)"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             if data:
@@ -66,25 +68,52 @@ def geocode_location(location_name: str) -> Optional[Tuple[float, float]]:
     return None
 
 
-def geocode_postal_code_with_city(postal_code: str, fallback_city: str) -> Optional[Tuple[float, float]]:
+def geocode_postal_code_with_city(
+    postal_code: Optional[str],
+    fallback_city: str,
+    city_center: Optional[Tuple[float, float]] = None
+) -> Optional[Tuple[float, float]]:
     """
-    Geocodes a postal code FSA (e.g. 'M5V, Toronto, ON') with fallback to city center coordinates.
+    Geocodes a postal code FSA (e.g. 'M5V', 'M4Y') with instant zero-latency offline lookup.
+    Falls back to bounded geocoding or city center coordinates.
     """
-    if not postal_code:
-        return geocode_location(fallback_city)
+    if postal_code:
+        clean_code = postal_code.strip().upper()
+        
+        # 1. High-precision instant offline FSA centroid lookup
+        fsa_match = lookup_fsa_data(clean_code)
+        if fsa_match:
+            return fsa_match[0], fsa_match[1]
 
-    # Try specific query: "M5V, Toronto, ON"
-    query = f"{postal_code}, {fallback_city}"
-    coords = geocode_location(query)
-    if coords:
-        return coords
+        # 2. Check in-memory cache
+        cache_key = f"{clean_code}_{fallback_city.strip().lower()}"
+        if cache_key in _GEOCODE_CACHE and _GEOCODE_CACHE[cache_key] is not None:
+            return _GEOCODE_CACHE[cache_key]
 
-    # Fallback to pure postal code query
-    coords = geocode_location(postal_code)
-    if coords:
-        return coords
+        # 3. Targeted structured query with country restriction to avoid foreign matches
+        try:
+            country_param = ""
+            if "canada" in fallback_city.lower() or ", on" in fallback_city.lower() or ", bc" in fallback_city.lower() or ", ab" in fallback_city.lower() or ", qc" in fallback_city.lower():
+                country_param = "&countrycodes=ca"
+            elif ", usa" in fallback_city.lower() or ", us" in fallback_city.lower():
+                country_param = "&countrycodes=us"
 
-    # Fallback to city center
+            encoded_q = urllib.parse.quote(f"{clean_code}, {fallback_city}")
+            url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded_q}{country_param}&limit=1"
+            req = urllib.request.Request(url, headers={"User-Agent": "RoverMarketIntelligence/3.5"})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data:
+                    coords = (float(data[0]["lat"]), float(data[0]["lon"]))
+                    _GEOCODE_CACHE[cache_key] = coords
+                    return coords
+        except Exception as exc:
+            logger.debug("Online postal geocoding failed for %s: %s", clean_code, exc)
+
+    # 4. Fallback to city center coordinates
+    if city_center and city_center[0] and city_center[1]:
+        return city_center
+
     return geocode_location(fallback_city)
 
 

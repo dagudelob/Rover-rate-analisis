@@ -786,61 +786,93 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
     if (!records || records.length === 0) return;
 
     const heatPoints = [];
-    let validCoordCount = 0;
+    const validLatLngs = [];
+    const coordGroups = {};
 
+    // Group valid sitters by coordinate key
     records.forEach((sitter, index) => {
         if (currentExcludedIndices.has(index)) return;
         if (!sitter.lat || !sitter.lng) return;
 
-        // Get price for target service
-        let price = sitter.price_numeric || 25;
-        if (targetService !== "all" && sitter.services) {
-            const srv = sitter.services.find(s => s.service_type === targetService);
-            if (srv && srv.price_numeric) price = srv.price_numeric;
-        }
+        const key = `${sitter.lat.toFixed(4)}_${sitter.lng.toFixed(4)}`;
+        if (!coordGroups[key]) coordGroups[key] = [];
+        coordGroups[key].push({ sitter, index });
+    });
 
-        const lat = sitter.lat;
-        const lng = sitter.lng;
-        validCoordCount++;
+    // Render pins and heat points
+    Object.values(coordGroups).forEach(group => {
+        const totalInGroup = group.length;
 
-        // Heatmap intensity normalized
-        heatPoints.push([lat, lng, 0.8]);
+        group.forEach((item, i) => {
+            const { sitter, index } = item;
 
-        const customIcon = L.divIcon({
-            className: 'custom-price-marker',
-            html: `<div id="map-pin-${index}" class="price-marker-pin" style="background-color: #3b82f6; font-weight:700;">$${Math.round(price)}</div>`,
-            iconSize: [46, 26],
-            iconAnchor: [23, 13]
+            // Get price for target service
+            let price = sitter.price_numeric || 25;
+            if (targetService !== "all" && sitter.services) {
+                const srv = sitter.services.find(s => s.service_type === targetService);
+                if (srv && srv.price_numeric) price = srv.price_numeric;
+            }
+
+            // Raw centroid for true heatmap density
+            heatPoints.push([sitter.lat, sitter.lng, 0.85]);
+
+            // If multiple sitters share the exact same centroid, apply subtle radial dispersion for pin clicks
+            let displayLat = sitter.lat;
+            let displayLng = sitter.lng;
+            if (totalInGroup > 1) {
+                const angle = (i * 2 * Math.PI) / totalInGroup;
+                const radiusMeters = 85 + (i % 2) * 45; // 85m to 130m offset
+                displayLat += (radiusMeters * Math.sin(angle)) / 111320;
+                displayLng += (radiusMeters * Math.cos(angle)) / (111320 * Math.cos(sitter.lat * Math.PI / 180));
+            }
+
+            validLatLngs.push([displayLat, displayLng]);
+
+            const customIcon = L.divIcon({
+                className: 'custom-price-marker',
+                html: `<div id="map-pin-${index}" class="price-marker-pin" style="background-color: #3b82f6; font-weight:700;">$${Math.round(price)}</div>`,
+                iconSize: [46, 26],
+                iconAnchor: [23, 13]
+            });
+
+            const marker = L.marker([displayLat, displayLng], { icon: customIcon }).addTo(markersLayerGroup);
+
+            const postalBadge = sitter.postal_code ? `<span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">📮 ${escapeHtml(sitter.postal_code)}</span>` : '';
+            const hoodDisplay = sitter.neighborhood ? `<div style="font-size:0.8rem; color:#cbd5e1; margin-top:2px;">📍 ${escapeHtml(sitter.neighborhood)}</div>` : '';
+            const popupContent = `
+                <div class="sitter-popup-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; font-size:0.95rem;">${escapeHtml(sitter.name)}</h4>
+                        ${postalBadge}
+                    </div>
+                    ${hoodDisplay}
+                    <p style="margin:6px 0; font-size:0.8rem; color:var(--text-muted); line-height:1.4;">${escapeHtml(sitter.headline || 'Local Pet Sitter')}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                        <span class="sitter-popup-badge">$${Math.round(price)}</span>
+                        <span style="font-size:0.8rem; color:#f59e0b;">★ ${escapeHtml(sitter.rating || '5.0')} (${sitter.reviews_count || 0})</span>
+                    </div>
+                    ${sitter.profile_url ? `<a href="${sitter.profile_url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:#3b82f6; text-decoration:none;">View Rover Profile ↗</a>` : ''}
+                </div>
+            `;
+            marker.bindPopup(popupContent);
         });
-
-        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markersLayerGroup);
-
-        const postalBadge = sitter.postal_code ? `<span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">📮 ${escapeHtml(sitter.postal_code)}</span>` : '';
-        const popupContent = `
-            <div class="sitter-popup-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h4>${escapeHtml(sitter.name)}</h4>
-                    ${postalBadge}
-                </div>
-                <p>${escapeHtml(sitter.headline || sitter.neighborhood || 'Local Pet Sitter')}</p>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                    <span class="sitter-popup-badge">$${Math.round(price)}</span>
-                    <span style="font-size:0.8rem; color:#f59e0b;">★ ${escapeHtml(sitter.rating || '5.0')} (${sitter.reviews_count || 0})</span>
-                </div>
-                ${sitter.profile_url ? `<a href="${sitter.profile_url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:#3b82f6; text-decoration:none;">View Rover Profile ↗</a>` : ''}
-            </div>
-        `;
-        marker.bindPopup(popupContent);
     });
 
     if (typeof L.heatLayer === 'function' && heatPoints.length > 0) {
         heatLayerInstance = L.heatLayer(heatPoints, {
-            radius: 40,
-            blur: 25,
+            radius: 38,
+            blur: 24,
             maxZoom: 14,
             max: 1.0,
             gradient: { 0.2: '#10b981', 0.5: '#3b82f6', 0.8: '#f59e0b', 1.0: '#ef4444' }
         }).addTo(mapInstance);
+    }
+
+    if (validLatLngs.length > 0) {
+        const bounds = L.latLngBounds(validLatLngs);
+        if (bounds.isValid()) {
+            mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
     }
 }
 

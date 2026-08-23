@@ -9,11 +9,17 @@ Responsible for:
 """
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.scraper.geocoding import extract_postal_code_fsa, geocode_postal_code_with_city
+from app.services.scraper.postal_data import lookup_fsa_data
 
 logger = logging.getLogger("rover.services.scraper.parser")
+
+PROV_STATE_RE = re.compile(
+    r"\b(ON|BC|AB|QC|MB|SK|NS|NB|PE|NL|AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b",
+    re.IGNORECASE
+)
 
 # ── Service-to-Unit Token Mapping ──────────────────────────────────────────────
 
@@ -243,10 +249,11 @@ def extract_all_services_and_prices(card_text: str, price_text: str = "") -> Lis
 
 def parse_sitter_name_and_headline(
     extracted_name: str, card_text: str, profile_url: str
-) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
+) -> tuple[str, Optional[str], Optional[str], Optional[str], Optional[float], Optional[float]]:
     """
-    Cleans the sitter name, extracts the headline, and detects real postal code FSA (e.g. M5V) and neighborhood.
-    Returns (name, headline, neighborhood, postal_code).
+    Cleans the sitter name, extracts the headline, and detects real postal code FSA (e.g. M5V),
+    neighborhood name, and resolved offline geographic coordinates (lat, lng).
+    Returns (name, headline, neighborhood, postal_code, lat, lng).
     """
     name = extracted_name
     if name:
@@ -257,33 +264,45 @@ def parse_sitter_name_and_headline(
 
     lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
     headline: Optional[str] = None
-    neighborhood: Optional[str] = None
+    raw_location_line: Optional[str] = None
     postal_code: Optional[str] = extract_postal_code_fsa(card_text)
 
     skip_terms = {
-        "view all", "photo", "total", "per walk", "per night",
+        "view all", "photo", "total", "per walk", "per night", "per visit", "per day",
         "highly responsive", "repeat clients", "out of 5 stars", "$",
+        "stars", "reviews",
     }
 
     for line in lines:
-        if any(term in line.lower() for term in skip_terms):
+        l_lower = line.lower()
+        if any(term in l_lower for term in skip_terms):
             continue
-        if not name:
-            name = re.sub(r"^\d+\.\s*", "", line)
-            name = re.sub(
-                r"(Star Sitter|Repeat Clients?|Highly Responsive).*$", "", name, flags=re.IGNORECASE
-            ).strip()
-        elif not headline and len(line) > 5 and not line.startswith("★") and not line.startswith("•"):
+        if re.search(r"^\d+\.\s*", line) or (name and name.lower() in l_lower):
+            continue
+
+        is_loc = bool(extract_postal_code_fsa(line) or ("," in line and PROV_STATE_RE.search(line)))
+        if is_loc and not raw_location_line:
+            raw_location_line = line
+        elif not headline and len(line) > 3 and not line.startswith("★") and not line.startswith("•"):
             headline = line
-        elif not neighborhood and ("," in line or "in " in line.lower() or "area" in line.lower() or "near" in line.lower()):
-            if len(line) < 40 and not line.startswith("$"):
-                neighborhood = line
 
     if not name and profile_url:
         slug = profile_url.split("/members/")[-1].strip("/")
         name = " ".join(word.capitalize() for word in slug.split("-")[:2])
 
-    return name or "Rover Sitter", headline, neighborhood, postal_code
+    neighborhood: Optional[str] = None
+    lat, lng = None, None
+
+    # Resolve accurate FSA coordinates & neighborhood from offline directory
+    if postal_code:
+        fsa_info = lookup_fsa_data(postal_code)
+        if fsa_info:
+            lat, lng, neighborhood = fsa_info
+
+    if not neighborhood and raw_location_line:
+        neighborhood = raw_location_line
+
+    return name or "Rover Sitter", headline, neighborhood, postal_code, lat, lng
 
 
 def parse_rating_and_reviews(card_text: str) -> tuple[Optional[str], Optional[float], Optional[str], int]:
@@ -322,7 +341,7 @@ def build_sitter_record(
     center_lng: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Parses a raw card dict into a typed sitter record with real FSA postal code geocoding.
+    Parses a raw card dict into a typed sitter record with authentic postal code geocoding.
     """
     profile_url = card["url"]
     card_text = card["cardText"]
@@ -335,13 +354,17 @@ def build_sitter_record(
     if price_numeric is None:
         return None
 
-    name, headline, parsed_neighborhood, postal_code = parse_sitter_name_and_headline(extracted_name, card_text, profile_url)
+    name, headline, parsed_neighborhood, postal_code, fsa_lat, fsa_lng = parse_sitter_name_and_headline(
+        extracted_name, card_text, profile_url
+    )
     neighborhood = card_neighborhood or parsed_neighborhood or location
 
-    # Geocode real postal code FSA centroid (e.g. "M5V, Toronto, ON")
-    lat, lng = None, None
-    if postal_code:
-        coords = geocode_postal_code_with_city(postal_code, location)
+    lat = fsa_lat
+    lng = fsa_lng
+
+    if lat is None or lng is None:
+        city_coords = (center_lat, center_lng) if (center_lat is not None and center_lng is not None) else None
+        coords = geocode_postal_code_with_city(postal_code, location, city_coords)
         if coords:
             lat, lng = coords
 
