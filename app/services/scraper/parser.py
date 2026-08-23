@@ -33,12 +33,12 @@ SERVICE_UNIT_EXPECTATIONS: Dict[str, List[str]] = {
 }
 
 SERVICE_NAMES: Dict[str, str] = {
-    "all-services":       "🌐 All Services (Master Sitter Catalog)",
-    "dog-walking":        "Dog Walking",
-    "overnight-boarding": "Overnight Boarding",
-    "drop-in-visits":     "Drop-in Visits",
-    "house-sitting":      "House Sitting",
-    "day-care":           "Day Care",
+    "overnight-boarding": "🏡 Overnight Boarding (Host in Sitter's Home)",
+    "all-services":       "🌐 All Services (Full 5-Service Scraping Pass)",
+    "dog-walking":        "🦮 Dog Walking",
+    "house-sitting":      "🛋️ House Sitting (At Owner's Home)",
+    "drop-in-visits":     "🚪 Drop-in Visits",
+    "day-care":           "☀️ Day Care",
 }
 
 # JavaScript injected into the page to extract raw card data from Rover DOM.

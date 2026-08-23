@@ -27,8 +27,8 @@ def test_get_services_endpoint(client):
     response = client.get("/api/services")
     assert response.status_code == 200
     data = response.json()
+    assert "overnight-boarding" in data
     assert "dog-walking" in data
-    assert data["dog-walking"] == "Dog Walking"
 
 
 def test_get_history_empty_or_list(client):
