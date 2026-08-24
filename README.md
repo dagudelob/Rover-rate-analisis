@@ -1,5 +1,6 @@
 # 🐾 Rover Market Intelligence & Pricing Analytics Platform
 
+[![CI / Tests](https://github.com/dagudelob/Rover-rate-analisis/actions/workflows/ci.yml/badge.svg)](https://github.com/dagudelob/Rover-rate-analisis/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Playwright](https://img.shields.io/badge/Playwright-Stealth-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev)
