@@ -26,6 +26,16 @@ CORE_ROVER_SERVICES = [
     "day-care",
 ]
 
+# Exact URL query parameter tokens accepted by Rover.com search backend.
+# Crucial: Rover falls back to default 'overnight-boarding' if unknown tokens like 'house-sitting' are passed.
+ROVER_SERVICE_PARAM_MAP: Dict[str, str] = {
+    "overnight-boarding": "overnight-boarding",
+    "house-sitting": "overnight-traveling",
+    "drop-in-visits": "drop-in",
+    "day-care": "doggy-day-care",
+    "dog-walking": "dog-walking",
+}
+
 
 class RoverScraperStrategy(BaseScraperStrategy):
     """Concrete scraping engine for Rover.com platform."""
@@ -80,13 +90,14 @@ class RoverScraperStrategy(BaseScraperStrategy):
         try:
             for srv_idx, current_service in enumerate(services_to_scrape, 1):
                 srv_display_name = SERVICE_NAMES.get(current_service, current_service.title())
+                rover_param = ROVER_SERVICE_PARAM_MAP.get(current_service, current_service)
                 emit("log", {
-                    "message": f"[{srv_idx}/{len(services_to_scrape)}] 🚀 Scraping real rates for service: '{srv_display_name}' ({current_service})..."
+                    "message": f"[{srv_idx}/{len(services_to_scrape)}] 🚀 Scraping real rates for service: '{srv_display_name}' ({rover_param})..."
                 })
 
                 for current_page in range(1, max_pages + 1):
                     url = (
-                        f"https://www.rover.com/search/?service_type={current_service}"
+                        f"https://www.rover.com/search/?service_type={rover_param}"
                         f"&location={encoded_location}&page={current_page}"
                     )
                     if radius_miles is not None:

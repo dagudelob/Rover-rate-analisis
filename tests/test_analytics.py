@@ -145,3 +145,53 @@ def test_pricing_sweet_spot_empirical_survival():
     last_pt = res["curve"][-1]
     assert first_pt["conversion_probability_pct"] > last_pt["conversion_probability_pct"]
     assert "elasticity" in first_pt
+
+
+def test_per_service_analytics_with_dynamic_exclusion():
+    records = [
+        {
+            "name": "Sitter 1",
+            "price_numeric": 25.0,
+            "reviews_count": 10,
+            "services": [
+                {"service_type": "dog-walking", "price_numeric": 25.0},
+                {"service_type": "house-sitting", "price_numeric": 70.0},
+                {"service_type": "day-care", "price_numeric": 45.0},
+            ]
+        },
+        {
+            "name": "Sitter 2",
+            "price_numeric": 28.0,
+            "reviews_count": 15,
+            "services": [
+                {"service_type": "dog-walking", "price_numeric": 28.0},
+                {"service_type": "house-sitting", "price_numeric": 75.0},
+                {"service_type": "day-care", "price_numeric": 50.0},
+            ]
+        },
+        {
+            "name": "Outlier Sitter",
+            "price_numeric": 90.0,
+            "reviews_count": 1,
+            "services": [
+                {"service_type": "dog-walking", "price_numeric": 90.0},
+                {"service_type": "house-sitting", "price_numeric": 250.0},
+                {"service_type": "day-care", "price_numeric": 180.0},
+            ]
+        },
+    ]
+
+    # Without exclusion
+    stats_all = calculate_market_statistics(records)
+    hs_all = stats_all["per_service_analytics"]["house-sitting"]
+    assert hs_all["max_price"] == 250.0
+    assert hs_all["total_sitters"] == 3
+
+    # With outlier excluded (idx 2)
+    stats_filtered = calculate_market_statistics(records, excluded_indices={2})
+    hs_filtered = stats_filtered["per_service_analytics"]["house-sitting"]
+    assert hs_filtered["max_price"] == 75.0
+    assert hs_filtered["total_sitters"] == 2
+    assert hs_filtered["pricing_optimizer"]["sweet_spot_price"] is not None
+    assert hs_filtered["pricing_optimizer"]["sweet_spot_price"] < 100.0
+

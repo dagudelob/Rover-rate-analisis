@@ -92,3 +92,50 @@ def test_export_master_csv(client):
     assert response.headers["content-type"].startswith("text/csv")
     assert "Sitter_ID" in response.text
     assert "Member_ID" in response.text
+
+
+def test_analytics_recalculate_with_exclusions_and_per_service(client):
+    payload = {
+        "records": [
+            {
+                "name": "Sitter 1",
+                "price_numeric": 25.0,
+                "reviews_count": 5,
+                "services": [
+                    {"service_type": "dog-walking", "price_numeric": 25.0},
+                    {"service_type": "house-sitting", "price_numeric": 65.0}
+                ]
+            },
+            {
+                "name": "Sitter 2",
+                "price_numeric": 30.0,
+                "reviews_count": 10,
+                "services": [
+                    {"service_type": "dog-walking", "price_numeric": 30.0},
+                    {"service_type": "house-sitting", "price_numeric": 70.0}
+                ]
+            },
+            {
+                "name": "Outlier Sitter",
+                "price_numeric": 95.0,
+                "reviews_count": 1,
+                "services": [
+                    {"service_type": "dog-walking", "price_numeric": 95.0},
+                    {"service_type": "house-sitting", "price_numeric": 250.0}
+                ]
+            },
+        ],
+        "excluded_indices": [2]
+    }
+    response = client.post("/api/analytics/recalculate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "stats" in data
+    stats = data["stats"]
+    assert stats["active_sitters"] == 2
+    assert stats["max_price"] == 30.0
+    assert "per_service_analytics" in stats
+    hs_stats = stats["per_service_analytics"]["house-sitting"]
+    assert hs_stats["max_price"] == 70.0
+    assert hs_stats["pricing_optimizer"]["sweet_spot_price"] is not None
+

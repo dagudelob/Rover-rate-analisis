@@ -195,17 +195,23 @@ def extract_price(
     return price_numeric, raw_price, rate_unit
 
 
-def extract_all_services_and_prices(card_text: str, price_text: str = "") -> List[Dict[str, Any]]:
+def extract_all_services_and_prices(
+    card_text: str, price_text: str = "", current_service: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Extracts all services and corresponding rates advertised by a sitter.
+    Respects current_service context (e.g. 'house-sitting' vs 'overnight-boarding' both using 'per night').
     """
     extracted_services: List[Dict[str, Any]] = []
     seen_types = set()
 
+    night_service = "house-sitting" if current_service == "house-sitting" else "overnight-boarding"
+    night_title = "House Sitting" if current_service == "house-sitting" else "Overnight Boarding"
+
     unit_to_service = {
         "walk": ("dog-walking", "Dog Walking", "per walk"),
         "visit": ("drop-in-visits", "Drop-In Visits", "per visit"),
-        "night": ("overnight-boarding", "Overnight Boarding", "per night"),
+        "night": (night_service, night_title, "per night"),
         "day": ("day-care", "Day Care", "per day"),
     }
 
@@ -372,7 +378,7 @@ def build_sitter_record(
         lat, lng = center_lat, center_lng
 
     rating, rating_numeric, reviews, reviews_count = parse_rating_and_reviews(card_text)
-    all_services = extract_all_services_and_prices(card_text, price_text)
+    all_services = extract_all_services_and_prices(card_text, price_text, current_service=service_type)
 
     # Ensure current queried service is registered
     has_current = any(s["service_type"] == service_type for s in all_services)
