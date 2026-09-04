@@ -6,7 +6,7 @@
   <title>Rover Market Intelligence | Multi-Service Analytics & Price Optimizer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Leaflet CSS & JS for Real Heatmap & Clustering -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -563,10 +563,15 @@
       <!-- SECTION 6: 5-SERVICE PRICING MATRIX -->
       <section id="section-services" class="content-section">
         <div class="section-header">
-          <h2>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-            5-Service Pricing Strategy & Margin Multipliers
-          </h2>
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              5-Service Pricing Strategy & Empirical Benchmarks
+            </h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+              Real observed interquartile ranges ($Q_1 - Q_3$) and sweet-spot price points directly from active market listings.
+            </p>
+          </div>
           <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics</span>
         </div>
 
@@ -579,11 +584,12 @@
                 <span class="service-multiplier-tag" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Base Anchor (1.0×)</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per walk &bull; <strong>Elasticity:</strong> High</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per 30m walk &bull; <strong>Elasticity:</strong> High (&epsilon; &gt; 1.5)</p>
             <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
+              <span>Market Benchmark:</span>
               <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$--</strong>
             </div>
+            <div id="serviceRateDogWalkingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
           </div>
 
           <div class="card service-strategy-card">
@@ -594,11 +600,12 @@
                 <span class="service-multiplier-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.3);">0.9× – 1.1× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min check-in &bull; <strong>Elasticity:</strong> Moderate</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min check-in &bull; <strong>Elasticity:</strong> Moderate (&epsilon; &asymp; 1.1)</p>
             <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
+              <span>Market Benchmark:</span>
               <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$--</strong>
             </div>
+            <div id="serviceRateDropInsSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
           </div>
 
           <div class="card service-strategy-card">
@@ -609,11 +616,12 @@
                 <span class="service-multiplier-tag" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">1.8× – 2.5× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night &bull; <strong>Elasticity:</strong> Inelastic</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (sitter home) &bull; <strong>Elasticity:</strong> Inelastic (&epsilon; &asymp; 0.6)</p>
             <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
+              <span>Market Benchmark:</span>
               <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$--</strong>
             </div>
+            <div id="serviceRateBoardingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
           </div>
 
           <div class="card service-strategy-card">
@@ -624,11 +632,12 @@
                 <span class="service-multiplier-tag" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);">2.2× – 3.2× Base</span>
               </div>
             </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (owner home) &bull; <strong>Elasticity:</strong> Highly Inelastic</p>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (owner home) &bull; <strong>Elasticity:</strong> Highly Inelastic (&epsilon; &asymp; 0.35)</p>
             <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
+              <span>Market Benchmark:</span>
               <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$--</strong>
             </div>
+            <div id="serviceRateHouseSittingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
           </div>
 
           <div class="card service-strategy-card">
@@ -637,6 +646,18 @@
               <div>
                 <h4 style="margin: 0; font-size: 1rem; color: #fff;">Doggy Day Care</h4>
                 <span class="service-multiplier-tag" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">1.4× – 1.9× Base</span>
+              </div>
+            </div>
+            <p class="service-strategy-desc"><strong>Unit:</strong> Per day &bull; <strong>Elasticity:</strong> Moderate-High (&epsilon; &asymp; 1.2)</p>
+            <div class="service-rate-calc">
+              <span>Market Benchmark:</span>
+              <strong id="serviceRateDayCare" style="color: #c084fc; font-size: 1.1rem;">$--</strong>
+            </div>
+            <div id="serviceRateDayCareSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+          </div>
+        </div>
+      </section>
+
       <!-- SECTION 6.1: ECONOMETRICS & HEDONIC PRICING MODEL -->
       <section id="section-econometrics" class="content-section">
         <div class="card">
