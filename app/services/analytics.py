@@ -363,11 +363,19 @@ def calculate_cross_service_stats(records: List[Dict[str, Any]]) -> Dict[str, An
 
     for r in records:
         services = r.get("services", [])
+        seen_types = set()
         for s in services:
             stype = s.get("service_type")
             price = s.get("price_numeric")
             if stype in service_prices and price is not None:
                 service_prices[stype].append(float(price))
+                seen_types.add(stype)
+
+        # Fallback to sitter's primary service_type if not present in services array
+        primary_stype = r.get("service_type")
+        primary_price = r.get("price_numeric")
+        if primary_stype in service_prices and primary_price is not None and primary_stype not in seen_types:
+            service_prices[primary_stype].append(float(primary_price))
 
     result = {}
     for stype, p_list in service_prices.items():

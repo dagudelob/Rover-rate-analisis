@@ -24,13 +24,12 @@ async def recalculate_stats(req: RecalculateRequest):
     """
     records_to_process = []
 
-    if req.session_id:
+    if req.records:
+        records_to_process = req.records
+    elif req.session_id:
         session = get_session_by_id(req.session_id)
         if session:
             records_to_process = session.get("sitters", [])
-
-    if not records_to_process and req.records is not None:
-        records_to_process = req.records
 
     excluded_set = set(req.excluded_indices)
     stats = calculate_market_statistics(records_to_process, excluded_indices=excluded_set)

@@ -224,9 +224,15 @@ function switchActiveServiceView(serviceTab) {
     document.getElementById("statStdDevBox").textContent = displayStats.std_dev ? `±$${displayStats.std_dev}` : "--";
     document.getElementById("statTrimmedBox").textContent = displayStats.trimmed_mean_10 ? `$${displayStats.trimmed_mean_10}` : "--";
 
-    // Update Outlier Bounds Label
+    // Update Outlier Bounds Label & Badge for the active service
+    const activeOutliers = (serviceTab !== "all" && displayStats.outlier_indices) ? displayStats.outlier_indices : currentAutoOutliers;
+    const outlierBadge = document.getElementById("iqrOutlierCountBadge");
+    if (outlierBadge) outlierBadge.textContent = activeOutliers ? activeOutliers.length : 0;
+
     if (displayStats.outlier_bounds && displayStats.outlier_bounds.lower !== null) {
         document.getElementById("iqrBoundsLabel").textContent = `$${displayStats.outlier_bounds.lower} to $${displayStats.outlier_bounds.upper}`;
+    } else {
+        document.getElementById("iqrBoundsLabel").textContent = "--";
     }
 
     // Update Optimal Pricing Card & Revenue Curve for this specific service
@@ -237,6 +243,12 @@ function switchActiveServiceView(serviceTab) {
         const strategyTextEl = document.getElementById("optimizerStrategyText");
         if (strategyTextEl) strategyTextEl.textContent = opt.strategy || "Optimizes booking yield against local price resistance.";
         renderRevenueOptimizationChart(opt.curve || [], opt.sweet_spot_price);
+    } else {
+        document.getElementById("optimizerSweetSpot").textContent = "$--";
+        document.getElementById("optimizerRange").textContent = "$-- to $--";
+        const strategyTextEl = document.getElementById("optimizerStrategyText");
+        if (strategyTextEl) strategyTextEl.textContent = "Insufficient active sitter rate data to model conversion curves.";
+        renderRevenueOptimizationChart([], null);
     }
 
     // Render Charts for this service
@@ -252,9 +264,12 @@ function switchActiveServiceView(serviceTab) {
     renderServiceComparisonChart(currentStatsPayload.service_comparisons || {});
     renderNeighborhoodChart(currentStatsPayload.neighborhood_breakdown || []);
     
-    // Update Map with Real Postal Centroids and Rates for active service
+    // Update Map with Quartile-based Heatmap and Colored Pins for active service
     renderHeatmap(currentRecords, AppState.centerLat, AppState.centerLng, serviceTab);
     renderEconometricModels(currentStatsPayload);
+    if (currentRecords && currentRecords.length > 0) {
+        renderTable(currentRecords);
+    }
 }
 
 // ── 3. Service Selector ───────────────────────────────────────────────────────
@@ -328,6 +343,8 @@ async function loadHistory() {
             item.style.marginBottom = "0.5rem";
             item.style.background = s.id === currentSessionId ? "rgba(59, 130, 246, 0.12)" : "var(--bg-card)";
             item.style.border = s.id === currentSessionId ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)";
+            item.style.cursor = "pointer";
+            item.style.transition = "background-color 0.15s, border-color 0.15s";
             
             const isChecked = selectedHistorySessionIds.has(s.id);
             const avgDisplay = s.avg_price ? `$${s.avg_price.toFixed(1)}` : "--";
@@ -336,14 +353,14 @@ async function loadHistory() {
                 <div style="display: flex; align-items: center;" onclick="event.stopPropagation()">
                     <input type="checkbox" class="history-checkbox" data-session-id="${s.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
                 </div>
-                <div class="history-info" style="flex-grow: 1; cursor: pointer;">
+                <div class="history-info" style="flex-grow: 1;">
                     <div style="display: flex; align-items: center; gap: 0.4rem;">
                         <strong style="color: var(--text-heading); font-size: 0.9rem;">#${s.id} ${escapeHtml(s.location)}</strong>
                         <span class="badge-stealth" style="font-size: 0.7rem; padding: 0.1rem 0.4rem;">${s.total_sitters} sitters</span>
                     </div>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">${escapeHtml(s.service_type)} &bull; ${date} ${s.radius_km ? `&bull; ${s.radius_km}km` : ''}</p>
                 </div>
-                <div class="history-stat" style="cursor: pointer; text-align: right;">
+                <div class="history-stat" style="text-align: right;">
                     <div class="avg" style="font-weight: 700; color: #10b981; font-size: 1.05rem;">${avgDisplay}</div>
                     <p style="font-size:0.7rem; color:var(--text-muted); margin:0;">Avg Rate</p>
                 </div>
@@ -352,8 +369,11 @@ async function loadHistory() {
                 </button>
             `;
 
-            item.querySelector(".history-info").addEventListener("click", () => selectSession(s.id));
-            item.querySelector(".history-stat").addEventListener("click", () => selectSession(s.id));
+            // Entire card click opens session (unless clicking checkbox or delete)
+            item.addEventListener("click", (e) => {
+                if (e.target.closest(".history-checkbox") || e.target.closest(".btn-delete-single")) return;
+                selectSession(s.id);
+            });
 
             const chk = item.querySelector(".history-checkbox");
             chk.addEventListener("change", (e) => {
@@ -371,6 +391,11 @@ async function loadHistory() {
 
             list.appendChild(item);
         });
+
+        // Auto-select latest historical session if no session is currently active
+        if (currentSessionId === null && data.sessions && data.sessions.length > 0) {
+            selectSession(data.sessions[0].id);
+        }
 
         setupHistoryBulkToolbar(data.sessions);
     } catch (err) {
@@ -787,6 +812,35 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
 
     if (!records || records.length === 0) return;
 
+    // 1. Collect all active prices for targetService to compute real quartiles
+    const activePrices = [];
+    records.forEach((sitter, index) => {
+        if (currentExcludedIndices.has(index)) return;
+        if (!sitter.lat || !sitter.lng) return;
+
+        let price = sitter.price_numeric;
+        if (targetService !== "all" && sitter.services) {
+            const srv = sitter.services.find(s => s.service_type === targetService);
+            if (srv && srv.price_numeric) price = srv.price_numeric;
+        }
+        if (price !== null && price !== undefined && !isNaN(price)) {
+            activePrices.push(parseFloat(price));
+        }
+    });
+
+    activePrices.sort((a, b) => a - b);
+    const n = activePrices.length;
+    let q1 = 25, q2 = 35, q3 = 50;
+    if (n >= 4) {
+        q1 = activePrices[Math.floor(n * 0.25)];
+        q2 = activePrices[Math.floor(n * 0.50)];
+        q3 = activePrices[Math.floor(n * 0.75)];
+    } else if (n > 0) {
+        q1 = activePrices[0];
+        q2 = activePrices[Math.floor(n / 2)];
+        q3 = activePrices[n - 1];
+    }
+
     const heatPoints = [];
     const validLatLngs = [];
     const coordGroups = {};
@@ -815,10 +869,23 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
                 if (srv && srv.price_numeric) price = srv.price_numeric;
             }
 
-            // Raw centroid for true heatmap density
-            heatPoints.push([sitter.lat, sitter.lng, 0.85]);
+            // Determine price quartile color & heat intensity matching Photo 3:
+            // Lower Rates [Green -> Blue -> Orange -> Red] Higher Rates
+            let pinColor = "#10b981"; // Green (Q1 - Lower rates)
+            let heatIntensity = 0.20;
 
-            // If multiple sitters share the exact same centroid, apply subtle radial dispersion for pin clicks
+            if (price > q3) {
+                pinColor = "#ef4444"; // Red (Q4 - Highest rates)
+                heatIntensity = 0.95;
+            } else if (price > q2) {
+                pinColor = "#f59e0b"; // Orange (Q3 - Upper-mid rates)
+                heatIntensity = 0.70;
+            } else if (price > q1) {
+                pinColor = "#3b82f6"; // Blue (Q2 - Lower-mid rates)
+                heatIntensity = 0.45;
+            }
+
+            // If multiple sitters share the exact same centroid, apply subtle radial dispersion
             let displayLat = sitter.lat;
             let displayLng = sitter.lng;
             if (totalInGroup > 1) {
@@ -828,11 +895,13 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
                 displayLng += (radiusMeters * Math.cos(angle)) / (111320 * Math.cos(sitter.lat * Math.PI / 180));
             }
 
+            // Price-weighted heat point
+            heatPoints.push([displayLat, displayLng, heatIntensity]);
             validLatLngs.push([displayLat, displayLng]);
 
             const customIcon = L.divIcon({
                 className: 'custom-price-marker',
-                html: `<div id="map-pin-${index}" class="price-marker-pin" style="background-color: #3b82f6; font-weight:700;">$${Math.round(price)}</div>`,
+                html: `<div id="map-pin-${index}" class="price-marker-pin" style="background-color: ${pinColor}; color: #ffffff; font-weight: 700; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 2px 6px rgba(0,0,0,0.35); text-shadow: 0 1px 2px rgba(0,0,0,0.4);">$${Math.round(price)}</div>`,
                 iconSize: [46, 26],
                 iconAnchor: [23, 13]
             });
@@ -850,7 +919,7 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
                     ${hoodDisplay}
                     <p style="margin:6px 0; font-size:0.8rem; color:var(--text-muted); line-height:1.4;">${escapeHtml(sitter.headline || 'Local Pet Sitter')}</p>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                        <span class="sitter-popup-badge">$${Math.round(price)}</span>
+                        <span class="sitter-popup-badge" style="background-color: ${pinColor}; color: #fff;">$${Math.round(price)}</span>
                         <span style="font-size:0.8rem; color:#f59e0b;">★ ${escapeHtml(sitter.rating || '5.0')} (${sitter.reviews_count || 0})</span>
                     </div>
                     ${sitter.profile_url ? `<a href="${sitter.profile_url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:#3b82f6; text-decoration:none;">View Rover Profile ↗</a>` : ''}
@@ -862,11 +931,16 @@ function renderHeatmap(records, centerLat, centerLng, targetService = "all") {
 
     if (typeof L.heatLayer === 'function' && heatPoints.length > 0) {
         heatLayerInstance = L.heatLayer(heatPoints, {
-            radius: 38,
-            blur: 24,
+            radius: 35,
+            blur: 22,
             maxZoom: 14,
             max: 1.0,
-            gradient: { 0.2: '#10b981', 0.5: '#3b82f6', 0.8: '#f59e0b', 1.0: '#ef4444' }
+            gradient: {
+                0.15: '#10b981', // Lower Rates (Green)
+                0.45: '#3b82f6', // Mid-Low (Blue)
+                0.70: '#f59e0b', // Mid-High (Orange)
+                0.95: '#ef4444'  // Higher Rates (Red)
+            }
         }).addTo(mapInstance);
     }
 
@@ -1126,30 +1200,47 @@ function renderNeighborhoodChart(hoodData) {
                 {
                     label: "Average Rate ($)",
                     data: avgData,
-                    backgroundColor: "rgba(59, 130, 246, 0.7)",
+                    backgroundColor: "rgba(59, 130, 246, 0.75)",
                     borderColor: "#3b82f6",
                     borderWidth: 1.5,
-                    borderRadius: 6
+                    borderRadius: 4
                 },
                 {
                     label: "Median Rate ($)",
                     data: medianData,
-                    backgroundColor: "rgba(16, 185, 129, 0.7)",
+                    backgroundColor: "rgba(16, 185, 129, 0.75)",
                     borderColor: "#10b981",
                     borderWidth: 1.5,
-                    borderRadius: 6
+                    borderRadius: 4
                 }
             ]
         },
         options: {
+            indexAxis: 'y', // Renders horizontally so neighborhood names form a clear vertical column
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { labels: { color: "#cbd5e1" } }
+                legend: { labels: { color: "#cbd5e1", font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: $${ctx.raw}`
+                    }
+                }
             },
             scales: {
-                x: { grid: { color: "rgba(255, 255, 255, 0.05)" }, ticks: { color: "#9ca3af" } },
-                y: { title: { display: true, text: "Price ($)", color: "#9ca3af" }, ticks: { color: "#9ca3af" } }
+                y: {
+                    grid: { color: "rgba(255, 255, 255, 0.05)" },
+                    ticks: {
+                        color: "#cbd5e1",
+                        font: { size: 11, weight: '500' },
+                        autoSkip: false
+                    }
+                },
+                x: {
+                    title: { display: true, text: "Price ($)", color: "#9ca3af" },
+                    grid: { color: "rgba(255, 255, 255, 0.05)" },
+                    ticks: { color: "#9ca3af" }
+                }
             }
         }
     });
@@ -1228,11 +1319,15 @@ function setupOutlierToolbar() {
     const btnReset = document.getElementById("btnResetFilters");
 
     btnAutoIQR.addEventListener("click", () => {
-        if (currentAutoOutliers.length === 0) {
-            alert("No price points fall outside the 1.5 * IQR outlier boundary.");
+        const activeOutliers = (AppState.activeServiceTab !== "all" && currentStatsPayload && currentStatsPayload.per_service_analytics && currentStatsPayload.per_service_analytics[AppState.activeServiceTab])
+            ? (currentStatsPayload.per_service_analytics[AppState.activeServiceTab].outlier_indices || [])
+            : (currentAutoOutliers || []);
+
+        if (activeOutliers.length === 0) {
+            alert(`No price points fall outside the 1.5 * IQR outlier boundary for ${SERVICE_TITLES[AppState.activeServiceTab] || 'active service'}.`);
             return;
         }
-        currentAutoOutliers.forEach(idx => currentExcludedIndices.add(idx));
+        activeOutliers.forEach(idx => currentExcludedIndices.add(idx));
         recalculateAndRefresh();
     });
 
@@ -1267,6 +1362,7 @@ async function recalculateAndRefresh() {
         currentAutoOutliers = data.auto_outliers || [];
         currentStatsPayload = data.stats;
         switchActiveServiceView(AppState.activeServiceTab);
+        renderTable(currentRecords);
     } catch (err) {
         console.error("Error recalculating stats:", err);
     }
@@ -1393,13 +1489,18 @@ function renderTable(records) {
         return;
     }
 
-    if (countBadge) countBadge.textContent = `${records.length} Sitters`;
+    const activeSittersCount = records.filter((_, idx) => !currentExcludedIndices.has(idx)).length;
+    if (countBadge) countBadge.textContent = `${activeSittersCount} Active / ${records.length} Total`;
+
+    const activeOutlierIndices = (AppState.activeServiceTab !== "all" && currentStatsPayload && currentStatsPayload.per_service_analytics && currentStatsPayload.per_service_analytics[AppState.activeServiceTab])
+        ? (currentStatsPayload.per_service_analytics[AppState.activeServiceTab].outlier_indices || [])
+        : (currentAutoOutliers || []);
 
     let indexedRecords = records.map((r, originalIdx) => ({
         data: r,
         originalIdx: originalIdx,
         isExcluded: currentExcludedIndices.has(originalIdx),
-        isAutoOutlier: currentAutoOutliers.includes(originalIdx)
+        isAutoOutlier: activeOutlierIndices.includes(originalIdx)
     }));
 
     let filtered = indexedRecords.filter(item => {
@@ -1517,10 +1618,13 @@ function renderTable(records) {
             price = record.price_numeric;
         }
 
+        const isCurrentActiveCol = (AppState.activeServiceTab === targetServiceType);
+        const colHighlightStyle = isCurrentActiveCol ? "background: rgba(59, 130, 246, 0.12); border-left: 1px solid rgba(59, 130, 246, 0.25); border-right: 1px solid rgba(59, 130, 246, 0.25);" : "";
+
         if (price !== null) {
-            return `<td style="text-align: center;"><span class="badge-price" style="font-weight: 700;">$${Math.round(price)}</span></td>`;
+            return `<td style="text-align: center; ${colHighlightStyle}"><span class="badge-price" style="font-weight: 700;">$${Math.round(price)}</span></td>`;
         } else {
-            return `<td style="text-align: center;"><span style="color: var(--text-muted); font-size: 0.78rem; opacity: 0.55;">N/A</span></td>`;
+            return `<td style="text-align: center; ${colHighlightStyle}"><span style="color: var(--text-muted); font-size: 0.78rem; opacity: 0.55;">N/A</span></td>`;
         }
     };
 

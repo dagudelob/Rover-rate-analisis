@@ -82,6 +82,7 @@ def test_parse_sitter_name_and_headline_with_fsa():
     assert lat is not None and lng is not None
     assert round(lat, 2) == 43.69
     assert round(lng, 2) == -79.40
+    assert hood is not None
     assert "Summerhill" in hood or "Forest Hill" in hood
 
 
@@ -155,3 +156,25 @@ def test_all_services_master_catalog_extraction():
     assert types["overnight-boarding"] == 65.0
     assert types["drop-in-visits"] == 20.0
     assert types["day-care"] == 35.0
+
+
+def test_rover_service_param_mapping():
+    from app.services.scraper.rover_strategy import ROVER_SERVICE_PARAM_MAP
+    assert ROVER_SERVICE_PARAM_MAP["overnight-boarding"] == "overnight-boarding"
+    assert ROVER_SERVICE_PARAM_MAP["house-sitting"] == "overnight-traveling"
+    assert ROVER_SERVICE_PARAM_MAP["drop-in-visits"] == "drop-in"
+    assert ROVER_SERVICE_PARAM_MAP["day-care"] == "doggy-day-care"
+    assert ROVER_SERVICE_PARAM_MAP["dog-walking"] == "dog-walking"
+
+
+def test_extract_all_services_with_house_sitting_context():
+    card = """
+    1. Sarah P.
+    $75 per night
+    $25 per walk
+    """
+    extracted = extract_all_services_and_prices(card, price_text="$75 per night", current_service="house-sitting")
+    types = {srv["service_type"]: srv["price_numeric"] for srv in extracted}
+    assert types.get("house-sitting") == 75.0
+    assert types.get("dog-walking") == 25.0
+

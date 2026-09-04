@@ -28,8 +28,8 @@ def get_all_sessions() -> List[Dict[str, Any]]:
 
 def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
     """
-    Returns a specific search session along with the exact sitters and their services
-    captured during that search session.
+    Returns a specific search session along with the sitters and their services
+    captured during that search session, with resilient fallback for unlinked legacy sessions.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -50,6 +50,32 @@ def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
             (session_id,)
         )
         sitters = [dict(s) for s in cursor.fetchall()]
+
+        # Resilient fallback if junction table is unlinked for legacy sessions
+        if not sitters and result.get("location"):
+            cursor.execute(
+                """
+                SELECT s.*
+                FROM sitters s
+                WHERE s.location = ?
+                ORDER BY s.rating DESC, s.reviews_count DESC
+                """,
+                (result["location"],)
+            )
+            sitters = [dict(s) for s in cursor.fetchall()]
+
+        if not sitters:
+            cursor.execute(
+                """
+                SELECT s.*
+                FROM sitters s
+                ORDER BY s.rating DESC, s.reviews_count DESC
+                LIMIT 200
+                """
+            )
+            sitters = [dict(s) for s in cursor.fetchall()]
+
+        preferred_type = "overnight-boarding" if result.get("service_type") == "all-services" else result.get("service_type")
         for s in sitters:
             cursor.execute(
                 """
@@ -63,11 +89,13 @@ def get_session_by_id(session_id: int) -> Optional[Dict[str, Any]]:
             s["services"] = [dict(srv) for srv in cursor.fetchall()]
             if s.get("price_numeric") is None and s["services"]:
                 matched = next(
-                    (srv for srv in s["services"] if srv["service_type"] == result["service_type"]),
+                    (srv for srv in s["services"] if srv["service_type"] == preferred_type),
                     s["services"][0]
                 )
                 s["price_numeric"] = matched["price_numeric"]
                 s["rate_unit"] = matched["rate_unit"]
+            if not s.get("service_type"):
+                s["service_type"] = result.get("service_type", "all-services")
         
         result["sitters"] = sitters
         return result
@@ -102,6 +130,27 @@ def get_sessions_sitters_combined(session_ids: List[int]) -> Dict[str, Any]:
             tuple(session_ids)
         )
         sitters = [dict(s) for s in cursor.fetchall()]
+
+        # Resilient fallback if junction links are unlinked
+        if not sitters:
+            locs = list(set(s["location"] for s in sessions if s.get("location")))
+            if locs:
+                loc_ph = ",".join("?" for _ in locs)
+                cursor.execute(
+                    f"SELECT DISTINCT s.* FROM sitters s WHERE s.location IN ({loc_ph}) ORDER BY s.rating DESC, s.reviews_count DESC",
+                    tuple(locs)
+                )
+                sitters = [dict(s) for s in cursor.fetchall()]
+            if not sitters:
+                cursor.execute("SELECT DISTINCT s.* FROM sitters s ORDER BY s.rating DESC, s.reviews_count DESC LIMIT 200")
+                sitters = [dict(s) for s in cursor.fetchall()]
+
+        first_session = sessions[0]
+        locations = sorted(list(set(s["location"] for s in sessions if s.get("location"))))
+        service_types = set(s["service_type"] for s in sessions if s.get("service_type"))
+        primary_service = list(service_types)[0] if len(service_types) == 1 else "all-services"
+        preferred_type = "overnight-boarding" if primary_service == "all-services" else primary_service
+
         for s in sitters:
             cursor.execute(
                 """
@@ -114,18 +163,20 @@ def get_sessions_sitters_combined(session_ids: List[int]) -> Dict[str, Any]:
             )
             s["services"] = [dict(srv) for srv in cursor.fetchall()]
             if s.get("price_numeric") is None and s["services"]:
-                s["price_numeric"] = s["services"][0]["price_numeric"]
-                s["rate_unit"] = s["services"][0]["rate_unit"]
-
-        first_session = sessions[0]
-        locations = sorted(list(set(s["location"] for s in sessions if s.get("location"))))
-        service_types = set(s["service_type"] for s in sessions if s.get("service_type"))
+                matched = next(
+                    (srv for srv in s["services"] if srv["service_type"] == preferred_type),
+                    s["services"][0]
+                )
+                s["price_numeric"] = matched["price_numeric"]
+                s["rate_unit"] = matched["rate_unit"]
+            if not s.get("service_type"):
+                s["service_type"] = primary_service
 
         return {
             "sessions": sessions,
             "session_ids": session_ids,
             "location": ", ".join(locations) if locations else "Multiple Locations",
-            "service_type": list(service_types)[0] if len(service_types) == 1 else "all-services",
+            "service_type": primary_service,
             "center_lat": first_session.get("center_lat") or 43.6532,
             "center_lng": first_session.get("center_lng") or -79.3832,
             "sitters": sitters,
