@@ -766,14 +766,16 @@ h1, h2, h3, h4, h5, h6 {
    Table Styles & Collapsible Wrapper
    ========================================================================== */
 
-.collapsible-table-wrapper {
-  max-height: 2000px;
+.collapsible-table-wrapper,
+.collapsible-card-wrapper {
+  max-height: 4000px;
   overflow: hidden;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
   opacity: 1;
 }
 
-.collapsible-table-wrapper.collapsed {
+.collapsible-table-wrapper.collapsed,
+.collapsible-card-wrapper.collapsed {
   max-height: 0 !important;
   opacity: 0;
   pointer-events: none;

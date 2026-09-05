@@ -73,6 +73,7 @@ const SERVICE_TITLES = {
 document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     setupSidebarNavigation();
+    setupCollapsibleSections();
     setupCollapsibleTable();
     setupCollapsibleHistorySection();
     setupPlatformSelector();
@@ -856,9 +857,9 @@ function initMapIfNeeded(centerLat, centerLng) {
             zoomControl: true
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            subdomains: 'abc',
             maxZoom: 19
         }).addTo(mapInstance);
 
@@ -1815,6 +1816,36 @@ async function loadTemporalTrends() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function setupCollapsibleSections() {
+    const toggleButtons = document.querySelectorAll(".btn-section-toggle");
+    toggleButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-target");
+            if (!targetId) return;
+            const wrapper = document.getElementById(targetId);
+            if (!wrapper) return;
+
+            const isCollapsed = wrapper.classList.toggle("collapsed");
+            const toggleText = btn.querySelector(".toggle-text");
+            const toggleIcon = btn.querySelector(".toggle-icon");
+
+            if (toggleText) {
+                toggleText.textContent = isCollapsed ? "Expand" : "Collapse";
+            }
+            if (toggleIcon) {
+                toggleIcon.style.transform = isCollapsed ? "rotate(180deg)" : "rotate(0deg)";
+            }
+
+            // If expanding the heatmap section, invalidate Leaflet map size so tiles render correctly
+            if (!isCollapsed && targetId === "heatmapCollapsibleWrapper" && mapInstance) {
+                setTimeout(() => {
+                    mapInstance.invalidateSize();
+                }, 350);
+            }
+        });
+    });
+}
+
 function setupCollapsibleTable() {
     const toggleBtn = document.getElementById("btnToggleSittersTable");
     const wrapper = document.getElementById("sittersCollapsibleWrapper");
