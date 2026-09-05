@@ -73,6 +73,7 @@ const SERVICE_TITLES = {
 document.addEventListener("DOMContentLoaded", () => {
     initTheme();
     setupSidebarNavigation();
+    setupCollapsibleSections();
     setupCollapsibleTable();
     setupCollapsibleHistorySection();
     setupPlatformSelector();
@@ -761,19 +762,87 @@ function renderResults(stats, records, location, service, sessionId) {
 }
 
 function updateServiceRateBenchmarks(stats) {
-    const baseRate = stats.median_price || stats.avg_price || 25.0;
-    
-    const elDogWalking = document.getElementById("serviceRateDogWalking");
-    const elDropIns = document.getElementById("serviceRateDropIns");
-    const elBoarding = document.getElementById("serviceRateBoarding");
-    const elHouseSitting = document.getElementById("serviceRateHouseSitting");
-    const elDayCare = document.getElementById("serviceRateDayCare");
+    if (!stats) return;
 
-    if (elDogWalking) elDogWalking.textContent = `$${Math.round(baseRate * 0.9)} - $${Math.round(baseRate * 1.15)}`;
-    if (elDropIns) elDropIns.textContent = `$${Math.round(baseRate * 0.88)} - $${Math.round(baseRate * 1.05)}`;
-    if (elBoarding) elBoarding.textContent = `$${Math.round(baseRate * 1.85)} - $${Math.round(baseRate * 2.45)}`;
-    if (elHouseSitting) elHouseSitting.textContent = `$${Math.round(baseRate * 2.25)} - $${Math.round(baseRate * 3.20)}`;
-    if (elDayCare) elDayCare.textContent = `$${Math.round(baseRate * 1.40)} - $${Math.round(baseRate * 1.85)}`;
+    // Service key mapping to DOM elements and metadata
+    const serviceConfigs = [
+        {
+            key: "dog-walking",
+            rateElId: "serviceRateDogWalking",
+            subElId: "serviceRateDogWalkingSub",
+            fallbackMultiplierLow: 0.90,
+            fallbackMultiplierHigh: 1.15,
+            defaultRate: 25.0
+        },
+        {
+            key: "drop-in-visits",
+            rateElId: "serviceRateDropIns",
+            subElId: "serviceRateDropInsSub",
+            fallbackMultiplierLow: 0.88,
+            fallbackMultiplierHigh: 1.05,
+            defaultRate: 23.0
+        },
+        {
+            key: "overnight-boarding",
+            rateElId: "serviceRateBoarding",
+            subElId: "serviceRateBoardingSub",
+            fallbackMultiplierLow: 1.85,
+            fallbackMultiplierHigh: 2.45,
+            defaultRate: 55.0
+        },
+        {
+            key: "house-sitting",
+            rateElId: "serviceRateHouseSitting",
+            subElId: "serviceRateHouseSittingSub",
+            fallbackMultiplierLow: 2.25,
+            fallbackMultiplierHigh: 3.20,
+            defaultRate: 65.0
+        },
+        {
+            key: "day-care",
+            rateElId: "serviceRateDayCare",
+            subElId: "serviceRateDayCareSub",
+            fallbackMultiplierLow: 1.40,
+            fallbackMultiplierHigh: 1.85,
+            defaultRate: 40.0
+        }
+    ];
+
+    const psa = stats.per_service_analytics || {};
+    const overallAnchor = stats.median_price || stats.avg_price || 25.0;
+
+    serviceConfigs.forEach(cfg => {
+        const rateEl = document.getElementById(cfg.rateElId);
+        const subEl = document.getElementById(cfg.subElId);
+        if (!rateEl) return;
+
+        const srvData = psa[cfg.key];
+        if (srvData && srvData.total_sitters && srvData.total_sitters > 0) {
+            const p25 = Math.round(srvData.p25_price || srvData.min_price);
+            const p75 = Math.round(srvData.p75_price || srvData.max_price);
+            const med = Math.round(srvData.median_price || srvData.avg_price);
+
+            if (p25 < p75) {
+                rateEl.textContent = `$${p25} – $${p75}`;
+            } else {
+                rateEl.textContent = `$${med}`;
+            }
+
+            if (subEl) {
+                subEl.innerHTML = `Empirical IQR &bull; <strong>$${med}</strong> med (${srvData.total_sitters} sitters)`;
+                subEl.style.color = "var(--text-secondary)";
+            }
+        } else {
+            // Graceful econometric multiplier projection from active anchor rate
+            const low = Math.round(overallAnchor * cfg.fallbackMultiplierLow);
+            const high = Math.round(overallAnchor * cfg.fallbackMultiplierHigh);
+            rateEl.textContent = `$${low} – $${high}`;
+
+            if (subEl) {
+                subEl.innerHTML = `<span style="color: #fbbf24;">&bull; Market Ratio Model (0 in scrape)</span>`;
+            }
+        }
+    });
 }
 
 // ── 7. Leaflet Geospatial Map & Real FSA Heatmap ────────────────────────────────
@@ -788,9 +857,9 @@ function initMapIfNeeded(centerLat, centerLng) {
             zoomControl: true
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            subdomains: 'abc',
             maxZoom: 19
         }).addTo(mapInstance);
 
@@ -1361,6 +1430,7 @@ async function recalculateAndRefresh() {
         const data = await res.json();
         currentAutoOutliers = data.auto_outliers || [];
         currentStatsPayload = data.stats;
+        updateServiceRateBenchmarks(currentStatsPayload);
         switchActiveServiceView(AppState.activeServiceTab);
         renderTable(currentRecords);
     } catch (err) {
@@ -1746,6 +1816,36 @@ async function loadTemporalTrends() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function setupCollapsibleSections() {
+    const toggleButtons = document.querySelectorAll(".btn-section-toggle");
+    toggleButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const targetId = btn.getAttribute("data-target");
+            if (!targetId) return;
+            const wrapper = document.getElementById(targetId);
+            if (!wrapper) return;
+
+            const isCollapsed = wrapper.classList.toggle("collapsed");
+            const toggleText = btn.querySelector(".toggle-text");
+            const toggleIcon = btn.querySelector(".toggle-icon");
+
+            if (toggleText) {
+                toggleText.textContent = isCollapsed ? "Expand" : "Collapse";
+            }
+            if (toggleIcon) {
+                toggleIcon.style.transform = isCollapsed ? "rotate(180deg)" : "rotate(0deg)";
+            }
+
+            // If expanding the heatmap section, invalidate Leaflet map size so tiles render correctly
+            if (!isCollapsed && targetId === "heatmapCollapsibleWrapper" && mapInstance) {
+                setTimeout(() => {
+                    mapInstance.invalidateSize();
+                }, 350);
+            }
+        });
+    });
+}
+
 function setupCollapsibleTable() {
     const toggleBtn = document.getElementById("btnToggleSittersTable");
     const wrapper = document.getElementById("sittersCollapsibleWrapper");

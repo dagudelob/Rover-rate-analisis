@@ -6,7 +6,7 @@
   <title>Rover Market Intelligence | Multi-Service Analytics & Price Optimizer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Leaflet CSS & JS for Real Heatmap & Clustering -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -73,12 +73,6 @@
             </a>
           </li>
           <li>
-            <a href="#section-sitters" class="nav-link">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              <span class="nav-text">Sitter Listings</span>
-            </a>
-          </li>
-          <li>
             <a href="#section-services" class="nav-link" style="color: #38bdf8;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
               <span class="nav-text">5-Service Matrix</span>
@@ -94,6 +88,12 @@
             <a href="#section-profit-simulator" class="nav-link" style="color: #f59e0b;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
               <span class="nav-text">Fee & Net Profit Simulator</span>
+            </a>
+          </li>
+          <li>
+            <a href="#section-sitters" class="nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <span class="nav-text">Sitter Listings</span>
             </a>
           </li>
           <li>
@@ -285,38 +285,46 @@
       <section id="section-optimizer" class="content-section">
         <div class="card" style="border: 1px solid rgba(59, 130, 246, 0.4); background: linear-gradient(180deg, rgba(17, 24, 39, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);">
           <div class="section-header">
-            <h2>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-              Optimal Price & Revenue Maximizer (<span id="optimizerServiceName">Selected Service</span>)
-            </h2>
-            <span style="font-size: 0.82rem; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid rgba(59, 130, 246, 0.3);">
-              Revenue Potential = Price &times; Conversion Probability
-            </span>
+            <div>
+              <h2 style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                Optimal Price & Revenue Maximizer (<span id="optimizerServiceName">Selected Service</span>)
+              </h2>
+              <span style="font-size: 0.82rem; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                Revenue Potential = Price &times; Conversion Probability
+              </span>
+            </div>
+            <button class="btn-secondary btn-section-toggle" data-target="optimizerCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+              <span class="toggle-text">Collapse</span>
+              <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 1.5rem; align-items: center;">
-            <!-- Recommended Pricing Strategy Card -->
-            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-md); padding: 1.5rem; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Recommended Optimal Price</div>
-              <div id="optimizerSweetSpot" style="font-size: 2.75rem; font-weight: 800; color: #10b981; margin: 0.25rem 0 0.5rem 0;">$--</div>
-              
-              <div style="margin-bottom: 1.25rem;">
-                <span style="font-size: 0.85rem; color: var(--text-secondary);">Optimal Bracket: </span>
-                <strong id="optimizerRange" style="font-size: 1.1rem; color: #fff;">$-- to $--</strong>
+          <div id="optimizerCollapsibleWrapper" class="collapsible-card-wrapper">
+            <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 1.5rem; align-items: center; padding-top: 0.5rem;">
+              <!-- Recommended Pricing Strategy Card -->
+              <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-md); padding: 1.5rem; border: 1px solid var(--border-color);">
+                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Recommended Optimal Price</div>
+                <div id="optimizerSweetSpot" style="font-size: 2.75rem; font-weight: 800; color: #10b981; margin: 0.25rem 0 0.5rem 0;">$--</div>
+                
+                <div style="margin-bottom: 1.25rem;">
+                  <span style="font-size: 0.85rem; color: var(--text-secondary);">Optimal Bracket: </span>
+                  <strong id="optimizerRange" style="font-size: 1.1rem; color: #fff;">$-- to $--</strong>
+                </div>
+
+                <div style="font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                  🎯 <strong>Maximization Strategy:</strong> <span id="optimizerStrategyText">Setting your rate in this bracket balances hiring conversion with maximum yield per booking.</span>
+                </div>
               </div>
 
-              <div style="font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                🎯 <strong>Maximization Strategy:</strong> <span id="optimizerStrategyText">Setting your rate in this bracket balances hiring conversion with maximum yield per booking.</span>
-              </div>
-            </div>
-
-            <!-- Revenue vs Conversion Curve Chart -->
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h4 style="font-size: 0.95rem; font-weight: 600; color: #fff;">Price vs. Hiring Probability & Revenue Curve</h4>
-              </div>
-              <div class="chart-wrapper" style="height: 230px;">
-                <canvas id="revenueOptimizationChart"></canvas>
+              <!-- Revenue vs Conversion Curve Chart -->
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <h4 style="font-size: 0.95rem; font-weight: 600; color: #fff;">Price vs. Hiring Probability & Revenue Curve</h4>
+                </div>
+                <div class="chart-wrapper" style="height: 230px;">
+                  <canvas id="revenueOptimizationChart"></canvas>
+                </div>
               </div>
             </div>
           </div>
@@ -327,68 +335,84 @@
       <section id="section-heatmap" class="content-section">
         <div class="card map-card">
           <div class="map-header-tools">
-            <h3 class="card-title" style="margin-bottom: 0;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-              Real Postal Code (FSA) Geospatial Heatmap & Clusters
-            </h3>
-            <div class="map-legend">
-              <span>Lower Rates</span>
-              <span class="legend-scale"></span>
-              <span>Higher Rates</span>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <h3 class="card-title" style="margin-bottom: 0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+                Real Postal Code (FSA) Geospatial Heatmap & Clusters
+              </h3>
+              <div class="map-legend">
+                <span>Lower Rates</span>
+                <span class="legend-scale"></span>
+                <span>Higher Rates</span>
+              </div>
             </div>
+            <button class="btn-secondary btn-section-toggle" data-target="heatmapCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+              <span class="toggle-text">Collapse</span>
+              <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
           </div>
-          <div id="mapContainer" style="height: 380px; width: 100%; border-radius: var(--radius-md); margin-top: 0.75rem;"></div>
+          <div id="heatmapCollapsibleWrapper" class="collapsible-card-wrapper">
+            <div id="mapContainer" style="height: 380px; width: 100%; border-radius: var(--radius-md); margin-top: 0.75rem;"></div>
+          </div>
         </div>
       </section>
 
       <!-- SECTION 3: STATISTICAL INTELLIGENCE CHARTS (5 CHARTS) -->
       <section id="section-analytics" class="content-section">
         <div class="section-header">
-          <h2>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-            Statistical Analysis Studio (<span id="chartsServiceName">Selected Service</span>)
-          </h2>
-          <span style="font-size: 0.82rem; color: var(--text-muted);">Real-world market distributions, cumulative density & cross-service benchmarks</span>
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Statistical Analysis Studio (<span id="chartsServiceName">Selected Service</span>)
+            </h2>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Real-world market distributions, cumulative density & cross-service benchmarks</span>
+          </div>
+          <button class="btn-secondary btn-section-toggle" data-target="analyticsCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+            <span class="toggle-text">Collapse</span>
+            <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
         </div>
 
-        <div class="charts-grid" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.25rem;">
-          <!-- Chart 1: Rate Histogram -->
-          <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">📊 Rate Distribution Histogram</h3>
-            <div class="chart-wrapper" style="height: 250px;">
-              <canvas id="priceDistributionChart"></canvas>
+        <div id="analyticsCollapsibleWrapper" class="collapsible-card-wrapper">
+          <div class="charts-grid" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.25rem; padding-top: 0.5rem;">
+            <!-- Chart 1: Rate Histogram -->
+            <div class="card" style="margin-bottom: 0;">
+              <h3 class="card-title">📊 Rate Distribution Histogram</h3>
+              <div class="chart-wrapper" style="height: 250px;">
+                <canvas id="priceDistributionChart"></canvas>
+              </div>
             </div>
-          </div>
 
-          <!-- Chart 2: Empirical Cumulative Distribution Function (CDF) -->
-          <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">📈 Cumulative Price Probability (CDF / Percentiles)</h3>
-            <div class="chart-wrapper" style="height: 250px;">
-              <canvas id="cdfChart"></canvas>
+            <!-- Chart 2: Empirical Cumulative Distribution Function (CDF) -->
+            <div class="card" style="margin-bottom: 0;">
+              <h3 class="card-title">📈 Cumulative Price Probability (CDF / Percentiles)</h3>
+              <div class="chart-wrapper" style="height: 250px;">
+                <canvas id="cdfChart"></canvas>
+              </div>
             </div>
-          </div>
 
-          <!-- Chart 3: Reviews vs Price Correlation -->
-          <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">⭐ Price vs. Review Count (Experience Premium)</h3>
-            <div class="chart-wrapper" style="height: 250px;">
-              <canvas id="ratingScatterChart"></canvas>
+            <!-- Chart 3: Reviews vs Price Correlation -->
+            <div class="card" style="margin-bottom: 0;">
+              <h3 class="card-title">⭐ Price vs. Review Count (Experience Premium)</h3>
+              <div class="chart-wrapper" style="height: 250px;">
+                <canvas id="ratingScatterChart"></canvas>
+              </div>
             </div>
-          </div>
 
-          <!-- Chart 4: Cross-Service Price Comparison -->
-          <div class="card" style="margin-bottom: 0;">
-            <h3 class="card-title">🏷️ Cross-Service Real Rate Comparison</h3>
-            <div class="chart-wrapper" style="height: 250px;">
-              <canvas id="serviceComparisonChart"></canvas>
+            <!-- Chart 4: Cross-Service Price Comparison -->
+            <div class="card" style="margin-bottom: 0;">
+              <h3 class="card-title">🏷️ Cross-Service Real Rate Comparison</h3>
+              <div class="chart-wrapper" style="height: 250px;">
+                <canvas id="serviceComparisonChart"></canvas>
+              </div>
             </div>
-          </div>
 
-          <!-- Chart 5: Top Neighborhoods Rate Comparison -->
-          <div class="card" style="grid-column: 1 / -1; margin-bottom: 0;">
-            <h3 class="card-title">📍 Neighborhood / Area Rate Comparison</h3>
-            <div class="chart-wrapper" style="height: 380px;">
-              <canvas id="neighborhoodChart"></canvas>
+            <!-- Chart 5: Top Neighborhoods Rate Comparison -->
+            <div class="card" style="grid-column: 1 / -1; margin-bottom: 0;">
+              <h3 class="card-title">📍 Neighborhood / Area Rate Comparison</h3>
+              <div class="chart-wrapper" style="height: 380px;">
+                <canvas id="neighborhoodChart"></canvas>
+              </div>
             </div>
           </div>
         </div>
@@ -398,58 +422,327 @@
       <section id="section-datastudio" class="content-section">
         <div class="card">
           <div class="section-header">
-            <h3 class="card-title" style="margin-bottom: 0;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-              Statistical Data Studio & Outlier Control
-            </h3>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Exclude abnormal price points to sanitize benchmarks</span>
+            <div>
+              <h3 class="card-title" style="margin-bottom: 0.25rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                Statistical Data Studio & Outlier Control
+              </h3>
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Exclude abnormal price points to sanitize benchmarks</span>
+            </div>
+            <button class="btn-secondary btn-section-toggle" data-target="datastudioCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+              <span class="toggle-text">Collapse</span>
+              <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
           </div>
 
-          <!-- Outlier Filters Toolbar -->
-          <div class="outlier-toolbar">
-            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-right: 0.5rem;">Outlier Presets:</span>
-            <button id="btnAutoFilterIQR" class="btn-filter-tag" title="Exclude sitters outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR]">
-              ⚡ Auto-Exclude IQR Outliers (<span id="iqrOutlierCountBadge">0</span>)
-            </button>
-            <button id="btnResetFilters" class="btn-filter-tag" title="Include all extracted sitters">
-              🔄 Reset (Include All)
-            </button>
-            <div style="margin-left: auto; font-size: 0.8rem; color: var(--text-secondary);">
-              Calculated IQR bounds: <strong id="iqrBoundsLabel" style="color: #60a5fa;">--</strong>
+          <div id="datastudioCollapsibleWrapper" class="collapsible-card-wrapper">
+            <!-- Outlier Filters Toolbar -->
+            <div class="outlier-toolbar" style="margin-top: 0.5rem;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-right: 0.5rem;">Outlier Presets:</span>
+              <button id="btnAutoFilterIQR" class="btn-filter-tag" title="Exclude sitters outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR]">
+                ⚡ Auto-Exclude IQR Outliers (<span id="iqrOutlierCountBadge">0</span>)
+              </button>
+              <button id="btnResetFilters" class="btn-filter-tag" title="Include all extracted sitters">
+                🔄 Reset (Include All)
+              </button>
+              <div style="margin-left: auto; font-size: 0.8rem; color: var(--text-secondary);">
+                Calculated IQR bounds: <strong id="iqrBoundsLabel" style="color: #60a5fa;">--</strong>
+              </div>
             </div>
-          </div>
 
-          <!-- Advanced Statistics Matrix -->
-          <div class="advanced-stats-grid">
-            <div class="stat-pill">
-              <div class="stat-pill-label">10th Percentile (P10)</div>
-              <div id="statP10" class="stat-pill-value">--</div>
-            </div>
-            <div class="stat-pill">
-              <div class="stat-pill-label">25th Percentile (Q1)</div>
-              <div id="statP25" class="stat-pill-value">--</div>
-            </div>
-            <div class="stat-pill">
-              <div class="stat-pill-label">75th Percentile (Q3)</div>
-              <div id="statP75" class="stat-pill-value">--</div>
-            </div>
-            <div class="stat-pill">
-              <div class="stat-pill-label">90th Percentile (P90)</div>
-              <div id="statP90" class="stat-pill-value">--</div>
-            </div>
-            <div class="stat-pill">
-              <div class="stat-pill-label">Standard Deviation (&sigma;)</div>
-              <div id="statStdDevBox" class="stat-pill-value">--</div>
-            </div>
-            <div class="stat-pill">
-              <div class="stat-pill-label">10% Trimmed Mean</div>
-              <div id="statTrimmedBox" class="stat-pill-value">--</div>
+            <!-- Advanced Statistics Matrix -->
+            <div class="advanced-stats-grid">
+              <div class="stat-pill">
+                <div class="stat-pill-label">10th Percentile (P10)</div>
+                <div id="statP10" class="stat-pill-value">--</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-pill-label">25th Percentile (Q1)</div>
+                <div id="statP25" class="stat-pill-value">--</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-pill-label">75th Percentile (Q3)</div>
+                <div id="statP75" class="stat-pill-value">--</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-pill-label">90th Percentile (P90)</div>
+                <div id="statP90" class="stat-pill-value">--</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-pill-label">Standard Deviation (&sigma;)</div>
+                <div id="statStdDevBox" class="stat-pill-value">--</div>
+              </div>
+              <div class="stat-pill">
+                <div class="stat-pill-label">10% Trimmed Mean</div>
+                <div id="statTrimmedBox" class="stat-pill-value">--</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SECTION 5: SITTER LISTINGS TABLE -->
+      <!-- SECTION 5: 5-SERVICE PRICING MATRIX -->
+      <section id="section-services" class="content-section">
+        <div class="section-header">
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              5-Service Pricing Strategy & Empirical Benchmarks
+            </h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+              Real observed interquartile ranges ($Q_1 - Q_3$) and sweet-spot price points directly from active market listings.
+            </p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics</span>
+            <button class="btn-secondary btn-section-toggle" data-target="servicesCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+              <span class="toggle-text">Collapse</span>
+              <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="servicesCollapsibleWrapper" class="collapsible-card-wrapper">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; padding-top: 0.5rem;">
+            <div class="card service-strategy-card">
+              <div class="service-strategy-header">
+                <div class="service-strategy-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">🦮</div>
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">Dog Walking</h4>
+                  <span class="service-multiplier-tag" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Base Anchor (1.0×)</span>
+                </div>
+              </div>
+              <p class="service-strategy-desc"><strong>Unit:</strong> Per 30m walk &bull; <strong>Elasticity:</strong> High (&epsilon; &gt; 1.5)</p>
+              <div class="service-rate-calc">
+                <span>Market Benchmark:</span>
+                <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$--</strong>
+              </div>
+              <div id="serviceRateDogWalkingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+            </div>
+
+            <div class="card service-strategy-card">
+              <div class="service-strategy-header">
+                <div class="service-strategy-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">🏠</div>
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">Drop-In Visits</h4>
+                  <span class="service-multiplier-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.3);">0.9× – 1.1× Base</span>
+                </div>
+              </div>
+              <p class="service-strategy-desc"><strong>Unit:</strong> 30 min check-in &bull; <strong>Elasticity:</strong> Moderate (&epsilon; &asymp; 1.1)</p>
+              <div class="service-rate-calc">
+                <span>Market Benchmark:</span>
+                <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$--</strong>
+              </div>
+              <div id="serviceRateDropInsSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+            </div>
+
+            <div class="card service-strategy-card">
+              <div class="service-strategy-header">
+                <div class="service-strategy-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">🏡</div>
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">Overnight Boarding</h4>
+                  <span class="service-multiplier-tag" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">1.8× – 2.5× Base</span>
+                </div>
+              </div>
+              <p class="service-strategy-desc"><strong>Unit:</strong> Per night (sitter home) &bull; <strong>Elasticity:</strong> Inelastic (&epsilon; &asymp; 0.6)</p>
+              <div class="service-rate-calc">
+                <span>Market Benchmark:</span>
+                <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$--</strong>
+              </div>
+              <div id="serviceRateBoardingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+            </div>
+
+            <div class="card service-strategy-card">
+              <div class="service-strategy-header">
+                <div class="service-strategy-icon" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🛋️</div>
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">House Sitting</h4>
+                  <span class="service-multiplier-tag" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);">2.2× – 3.2× Base</span>
+                </div>
+              </div>
+              <p class="service-strategy-desc"><strong>Unit:</strong> Per night (owner home) &bull; <strong>Elasticity:</strong> Highly Inelastic (&epsilon; &asymp; 0.35)</p>
+              <div class="service-rate-calc">
+                <span>Market Benchmark:</span>
+                <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$--</strong>
+              </div>
+              <div id="serviceRateHouseSittingSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+            </div>
+
+            <div class="card service-strategy-card">
+              <div class="service-strategy-header">
+                <div class="service-strategy-icon" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">☀️</div>
+                <div>
+                  <h4 style="margin: 0; font-size: 1rem; color: #fff;">Doggy Day Care</h4>
+                  <span class="service-multiplier-tag" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">1.4× – 1.9× Base</span>
+                </div>
+              </div>
+              <p class="service-strategy-desc"><strong>Unit:</strong> Per day &bull; <strong>Elasticity:</strong> Moderate-High (&epsilon; &asymp; 1.2)</p>
+              <div class="service-rate-calc">
+                <span>Market Benchmark:</span>
+                <strong id="serviceRateDayCare" style="color: #c084fc; font-size: 1.1rem;">$--</strong>
+              </div>
+              <div id="serviceRateDayCareSub" class="service-rate-source" style="font-size: 0.72rem; color: var(--text-muted);">Empirical Market IQR</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6.1: ECONOMETRICS & HEDONIC PRICING MODEL -->
+      <section id="section-econometrics" class="content-section">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <h3 class="card-title" style="margin-bottom: 0.25rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                Econometric Hedonic Model & Attribute Decomposition
+              </h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+                Semi-Log OLS Regression with Heteroskedasticity-Consistent (HC1) Standard Errors: 
+                <code style="background: rgba(168,85,247,0.15); color: #c084fc; padding: 2px 6px; border-radius: 4px;">ln(Price) = &beta;₀ + &beta;₁·ln(Reviews+1) + &beta;₂·StarSitter + &epsilon;</code>
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <div id="hedonicR2Badge" class="badge-stealth" style="background: rgba(168,85,247,0.15); color: #c084fc; border-color: rgba(168,85,247,0.3);">
+                Model Fit R²: --
+              </div>
+              <button class="btn-secondary btn-section-toggle" data-target="econometricsCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+                <span class="toggle-text">Collapse</span>
+                <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="econometricsCollapsibleWrapper" class="collapsible-card-wrapper">
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; margin-top: 1.25rem;">
+              <!-- Hedonic Metrics Decomposition -->
+              <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="stat-pill" style="border-left: 3px solid #c084fc;">
+                  <div class="stat-pill-label">Verified Reviews Elasticity (&beta;₁)</div>
+                  <div id="hedonicReviewElasticity" class="stat-pill-value" style="color: #c084fc;">--</div>
+                  <div id="hedonicReviewDesc" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                    Marginal price increase per 100% review count growth
+                  </div>
+                </div>
+
+                <div class="stat-pill" style="border-left: 3px solid #fbbf24;">
+                  <div class="stat-pill-label">'Star Sitter' Badge Market Premium (&beta;₂)</div>
+                  <div id="hedonicStarPremium" class="stat-pill-value" style="color: #fbbf24;">--</div>
+                  <div id="hedonicStarDesc" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                    Attribute premium holding review count constant
+                  </div>
+                </div>
+
+                <div class="stat-pill" style="border-left: 3px solid #38bdf8;">
+                  <div class="stat-pill-label">Model Base Entry Rate (e^&beta;₀)</div>
+                  <div id="hedonicBaseRate" class="stat-pill-value" style="color: #38bdf8;">$--</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                    Theoretical baseline for a new sitter with 0 reviews
+                  </div>
+                </div>
+              </div>
+
+              <!-- Spatial Neighborhood Premiums Table -->
+              <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; max-height: 310px; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                  <h4 style="margin: 0; font-size: 0.9rem; color: #fff;">Spatial Location Quotients by Postal FSA</h4>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">vs Metro Median</span>
+                </div>
+                <div id="spatialPremiumsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 1rem;">No spatial data available yet.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6.2: ROVER PLATFORM FEE & NET PROFIT SIMULATOR -->
+      <section id="section-profit-simulator" class="content-section">
+        <div class="card" style="border-color: rgba(245, 158, 11, 0.3);">
+          <div class="section-header">
+            <div>
+              <h3 class="card-title" style="margin-bottom: 0.25rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+                Rover Take-Rate, Net Profit & Constant Care Simulator
+              </h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
+                Calculates true marketplace economics, platform take-rates (20% sitter fee + 11% owner fee), and custom constant care premiums.
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center;">
+              <span class="badge-stealth" style="color: #fbbf24; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3);">
+                Reddit Community Pricing Toolkit
+              </span>
+              <button class="btn-secondary btn-section-toggle" data-target="profitSimulatorCollapsibleWrapper" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; display: flex; align-items: center; gap: 0.4rem;" title="Collapse or Expand Section">
+                <span class="toggle-text">Collapse</span>
+                <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="profitSimulatorCollapsibleWrapper" class="collapsible-card-wrapper">
+            <div style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 1.5rem; margin-top: 1.25rem;">
+              <!-- Calculator Inputs Form -->
+              <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.9rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" for="simListedRate">Your Listed Base Rate ($ / unit)</label>
+                  <input type="number" id="simListedRate" class="form-input" value="65" min="10" max="300" step="1">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="simNightsCount">Stay Duration (Nights/Units)</label>
+                    <input type="number" id="simNightsCount" class="form-input" value="5" min="1" max="60">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="simPetsCount">Number of Pets</label>
+                    <input type="number" id="simPetsCount" class="form-input" value="1" min="1" max="5">
+                  </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid var(--border-color);">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #fff; cursor: pointer;">
+                    <input type="checkbox" id="simConstantCareToggle" style="width: 16px; height: 16px; cursor: pointer;">
+                    <span><strong>Require Constant Care (24/7 Supervision)</strong></span>
+                  </label>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 1.5rem;">
+                    Applies industry standard +45% premium for high-anxiety pets requiring &lt;2 hours alone time.
+                  </span>
+                </div>
+              </div>
+
+              <!-- Financial Breakdown Matrix -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
+                <div class="stat-pill" style="border-top: 3px solid #10b981;">
+                  <div class="stat-pill-label">💵 Your Net Bank Payout (80%)</div>
+                  <div id="simNetPayout" class="stat-pill-value" style="color: #10b981; font-size: 1.6rem;">$--</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">What lands in your Stripe bank account</div>
+                </div>
+
+                <div class="stat-pill" style="border-top: 3px solid #38bdf8;">
+                  <div class="stat-pill-label">💳 What Client Pays at Checkout</div>
+                  <div id="simClientTotal" class="stat-pill-value" style="color: #38bdf8; font-size: 1.6rem;">$--</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Includes 11% Rover booking fee</div>
+                </div>
+
+                <div class="stat-pill" style="border-top: 3px solid #ef4444;">
+                  <div class="stat-pill-label">📉 Total Rover Take-Rate Fee</div>
+                  <div id="simRoverCut" class="stat-pill-value" style="color: #ef4444; font-size: 1.3rem;">$--</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Combined 31% platform extraction</div>
+                </div>
+
+                <div class="stat-pill" style="border-top: 3px solid #fbbf24;">
+                  <div class="stat-pill-label">🎯 Target Listing Rate to Net $60/night</div>
+                  <div id="simRecommendedListing" class="stat-pill-value" style="color: #fbbf24; font-size: 1.3rem;">$75.00</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">List at $75 to pocket exactly $60</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7: SITTER LISTINGS TABLE -->
       <section id="section-sitters" class="content-section">
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
@@ -555,222 +848,6 @@
                 </thead>
                 <tbody id="sittersTableBody"></tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SECTION 6: 5-SERVICE PRICING MATRIX -->
-      <section id="section-services" class="content-section">
-        <div class="section-header">
-          <h2>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-            5-Service Pricing Strategy & Margin Multipliers
-          </h2>
-          <span style="font-size: 0.82rem; color: #7dd3fc; background: rgba(56, 189, 248, 0.15); padding: 0.3rem 0.85rem; border-radius: 999px; border: 1px solid rgba(56, 189, 248, 0.3);">Cross-service unit economics</span>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-          <div class="card service-strategy-card">
-            <div class="service-strategy-header">
-              <div class="service-strategy-icon" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">🦮</div>
-              <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Dog Walking</h4>
-                <span class="service-multiplier-tag" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Base Anchor (1.0×)</span>
-              </div>
-            </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per walk &bull; <strong>Elasticity:</strong> High</p>
-            <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
-              <strong id="serviceRateDogWalking" style="color: #60a5fa; font-size: 1.1rem;">$--</strong>
-            </div>
-          </div>
-
-          <div class="card service-strategy-card">
-            <div class="service-strategy-header">
-              <div class="service-strategy-icon" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">🏠</div>
-              <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Drop-In Visits</h4>
-                <span class="service-multiplier-tag" style="color: #34d399; border-color: rgba(16, 185, 129, 0.3);">0.9× – 1.1× Base</span>
-              </div>
-            </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> 30 min check-in &bull; <strong>Elasticity:</strong> Moderate</p>
-            <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
-              <strong id="serviceRateDropIns" style="color: #34d399; font-size: 1.1rem;">$--</strong>
-            </div>
-          </div>
-
-          <div class="card service-strategy-card">
-            <div class="service-strategy-header">
-              <div class="service-strategy-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">🏡</div>
-              <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Overnight Boarding</h4>
-                <span class="service-multiplier-tag" style="color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">1.8× – 2.5× Base</span>
-              </div>
-            </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night &bull; <strong>Elasticity:</strong> Inelastic</p>
-            <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
-              <strong id="serviceRateBoarding" style="color: #fbbf24; font-size: 1.1rem;">$--</strong>
-            </div>
-          </div>
-
-          <div class="card service-strategy-card">
-            <div class="service-strategy-header">
-              <div class="service-strategy-icon" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🛋️</div>
-              <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #fff;">House Sitting</h4>
-                <span class="service-multiplier-tag" style="color: #f87171; border-color: rgba(239, 68, 68, 0.3);">2.2× – 3.2× Base</span>
-              </div>
-            </div>
-            <p class="service-strategy-desc"><strong>Unit:</strong> Per night (owner home) &bull; <strong>Elasticity:</strong> Highly Inelastic</p>
-            <div class="service-rate-calc">
-              <span>Benchmark Rate:</span>
-              <strong id="serviceRateHouseSitting" style="color: #f87171; font-size: 1.1rem;">$--</strong>
-            </div>
-          </div>
-
-          <div class="card service-strategy-card">
-            <div class="service-strategy-header">
-              <div class="service-strategy-icon" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">☀️</div>
-              <div>
-                <h4 style="margin: 0; font-size: 1rem; color: #fff;">Doggy Day Care</h4>
-                <span class="service-multiplier-tag" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">1.4× – 1.9× Base</span>
-      <!-- SECTION 6.1: ECONOMETRICS & HEDONIC PRICING MODEL -->
-      <section id="section-econometrics" class="content-section">
-        <div class="card">
-          <div class="section-header">
-            <div>
-              <h3 class="card-title" style="margin-bottom: 0.25rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                Econometric Hedonic Model & Attribute Decomposition
-              </h3>
-              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
-                Semi-Log OLS Regression with Heteroskedasticity-Consistent (HC1) Standard Errors: 
-                <code style="background: rgba(168,85,247,0.15); color: #c084fc; padding: 2px 6px; border-radius: 4px;">ln(Price) = &beta;₀ + &beta;₁·ln(Reviews+1) + &beta;₂·StarSitter + &epsilon;</code>
-              </p>
-            </div>
-            <div id="hedonicR2Badge" class="badge-stealth" style="background: rgba(168,85,247,0.15); color: #c084fc; border-color: rgba(168,85,247,0.3);">
-              Model Fit R²: --
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; margin-top: 1.25rem;">
-            <!-- Hedonic Metrics Decomposition -->
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-              <div class="stat-pill" style="border-left: 3px solid #c084fc;">
-                <div class="stat-pill-label">Verified Reviews Elasticity (&beta;₁)</div>
-                <div id="hedonicReviewElasticity" class="stat-pill-value" style="color: #c084fc;">--</div>
-                <div id="hedonicReviewDesc" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
-                  Marginal price increase per 100% review count growth
-                </div>
-              </div>
-
-              <div class="stat-pill" style="border-left: 3px solid #fbbf24;">
-                <div class="stat-pill-label">'Star Sitter' Badge Market Premium (&beta;₂)</div>
-                <div id="hedonicStarPremium" class="stat-pill-value" style="color: #fbbf24;">--</div>
-                <div id="hedonicStarDesc" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
-                  Attribute premium holding review count constant
-                </div>
-              </div>
-
-              <div class="stat-pill" style="border-left: 3px solid #38bdf8;">
-                <div class="stat-pill-label">Model Base Entry Rate (e^&beta;₀)</div>
-                <div id="hedonicBaseRate" class="stat-pill-value" style="color: #38bdf8;">$--</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
-                  Theoretical baseline for a new sitter with 0 reviews
-                </div>
-              </div>
-            </div>
-
-            <!-- Spatial Neighborhood Premiums Table -->
-            <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; max-height: 310px; overflow-y: auto;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <h4 style="margin: 0; font-size: 0.9rem; color: #fff;">Spatial Location Quotients by Postal FSA</h4>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">vs Metro Median</span>
-              </div>
-              <div id="spatialPremiumsList" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 1rem;">No spatial data available yet.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SECTION 6.2: ROVER PLATFORM FEE & NET PROFIT SIMULATOR -->
-      <section id="section-profit-simulator" class="content-section">
-        <div class="card" style="border-color: rgba(245, 158, 11, 0.3);">
-          <div class="section-header">
-            <div>
-              <h3 class="card-title" style="margin-bottom: 0.25rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
-                Rover Take-Rate, Net Profit & Constant Care Simulator
-              </h3>
-              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
-                Calculates true marketplace economics, platform take-rates (20% sitter fee + 11% owner fee), and custom constant care premiums.
-              </p>
-            </div>
-            <span class="badge-stealth" style="color: #fbbf24; background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3);">
-              Reddit Community Pricing Toolkit
-            </span>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 1.5rem; margin-top: 1.25rem;">
-            <!-- Calculator Inputs Form -->
-            <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.9rem;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" for="simListedRate">Your Listed Base Rate ($ / unit)</label>
-                <input type="number" id="simListedRate" class="form-input" value="65" min="10" max="300" step="1">
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" for="simNightsCount">Stay Duration (Nights/Units)</label>
-                  <input type="number" id="simNightsCount" class="form-input" value="5" min="1" max="60">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" for="simPetsCount">Number of Pets</label>
-                  <input type="number" id="simPetsCount" class="form-input" value="1" min="1" max="5">
-                </div>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid var(--border-color);">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #fff; cursor: pointer;">
-                  <input type="checkbox" id="simConstantCareToggle" style="width: 16px; height: 16px; cursor: pointer;">
-                  <span><strong>Require Constant Care (24/7 Supervision)</strong></span>
-                </label>
-                <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 1.5rem;">
-                  Applies industry standard +45% premium for high-anxiety pets requiring &lt;2 hours alone time.
-                </span>
-              </div>
-            </div>
-
-            <!-- Financial Breakdown Matrix -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;">
-              <div class="stat-pill" style="border-top: 3px solid #10b981;">
-                <div class="stat-pill-label">💵 Your Net Bank Payout (80%)</div>
-                <div id="simNetPayout" class="stat-pill-value" style="color: #10b981; font-size: 1.6rem;">$--</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">What lands in your Stripe bank account</div>
-              </div>
-
-              <div class="stat-pill" style="border-top: 3px solid #38bdf8;">
-                <div class="stat-pill-label">💳 What Client Pays at Checkout</div>
-                <div id="simClientTotal" class="stat-pill-value" style="color: #38bdf8; font-size: 1.6rem;">$--</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Includes 11% Rover booking fee</div>
-              </div>
-
-              <div class="stat-pill" style="border-top: 3px solid #ef4444;">
-                <div class="stat-pill-label">📉 Total Rover Take-Rate Fee</div>
-                <div id="simRoverCut" class="stat-pill-value" style="color: #ef4444; font-size: 1.3rem;">$--</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Combined 31% platform extraction</div>
-              </div>
-
-              <div class="stat-pill" style="border-top: 3px solid #fbbf24;">
-                <div class="stat-pill-label">🎯 Target Listing Rate to Net $60/night</div>
-                <div id="simRecommendedListing" class="stat-pill-value" style="color: #fbbf24; font-size: 1.3rem;">$75.00</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">List at $75 to pocket exactly $60</div>
-              </div>
             </div>
           </div>
         </div>
