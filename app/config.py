@@ -5,7 +5,11 @@ All settings are read from environment variables with typed defaults.
 Using Pydantic BaseSettings ensures values are validated at startup.
 """
 import os
-from typing import List
+from typing import List, Optional
+from dotenv import load_dotenv
+
+# Load local .env if present (secrets never committed to Git)
+load_dotenv()
 
 
 class Settings:
@@ -16,6 +20,15 @@ class Settings:
         "DB_PATH",
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rover_market.db")
     )
+
+    # Supabase Cloud Database Configuration
+    supabase_url: Optional[str] = os.environ.get("SUPABASE_URL")
+    supabase_key: Optional[str] = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+
+    @property
+    def is_supabase_enabled(self) -> bool:
+        """Returns True if valid Supabase connection credentials are provided."""
+        return bool(self.supabase_url and self.supabase_key)
 
     # CORS — restrict to specific origins in production
     cors_origins: List[str] = os.environ.get("CORS_ORIGINS", "http://localhost:8000").split(",")
