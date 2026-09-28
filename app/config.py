@@ -23,7 +23,17 @@ class Settings:
 
     # Supabase Cloud Database Configuration
     supabase_url: Optional[str] = os.environ.get("SUPABASE_URL")
-    supabase_key: Optional[str] = os.environ.get("SUPABASE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+    supabase_key: Optional[str] = (
+        os.environ.get("SUPABASE_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+        or os.environ.get("SUPABASE_SECRET_KEY")
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    )
+    supabase_secret_key: Optional[str] = (
+        os.environ.get("SUPABASE_SECRET_KEY")
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    )
 
     @property
     def is_supabase_enabled(self) -> bool:
