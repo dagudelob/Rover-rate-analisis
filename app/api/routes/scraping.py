@@ -13,10 +13,11 @@ from typing import Optional
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
-from app.services.scraper import SERVICE_NAMES, scrape_rover_with_events
+from app.services.scraper import SERVICE_NAMES
 from app.services.scraper.factory import get_scraper_strategy, list_supported_platforms
 from app.services.analytics import calculate_market_statistics, detect_outliers_iqr
 from app.db.repository import save_scrape_results, upsert_sitters_and_services_bulk, get_all_normalized_sitters_with_services
+from app.db.supabase_sync import sync_scrape_session_to_supabase
 
 logger = logging.getLogger("rover.api.scraping")
 router = APIRouter(prefix="/api", tags=["Scraping"])
@@ -99,8 +100,25 @@ async def scrape_stream(
                 bulk_res = upsert_sitters_and_services_bulk(records, location, platform)
                 logger.info("ETL Pipeline Loaded %d sitters and %d services.", bulk_res["sitters_upserted"], bulk_res["services_upserted"])
 
+                # Real-Time Cloud Synchronization to Supabase (if enabled)
+                supa_id = sync_scrape_session_to_supabase(
+                    location=location,
+                    service_type=service_type,
+                    radius_km=radius_km,
+                    center_lat=result.get("center_lat"),
+                    center_lng=result.get("center_lng"),
+                    pages_requested=max_pages,
+                    pages_completed=result["pages_completed"],
+                    stats=stats,
+                    records=records,
+                    platform=platform,
+                )
+                if supa_id:
+                    logger.info("Scrape session successfully synchronized to Supabase with session_id=%s", supa_id)
+
                 push_event("complete", {
                     "session_id": session_id,
+                    "supabase_session_id": supa_id,
                     "stats": stats,
                     "auto_outliers": outliers,
                     "records": records,
