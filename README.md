@@ -6,9 +6,10 @@
 [![Playwright](https://img.shields.io/badge/Playwright-Stealth-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev)
 [![KaTeX](https://img.shields.io/badge/KaTeX-LaTeX_Math-329894?style=for-the-badge)](https://katex.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com**. This platform extracts multi-page market listings, models the empirical relationship between pricing and booking conversion probability via **Empirical Survival Analysis**, identifies the mathematical **Revenue Sweet Spot** using **Price Elasticity of Demand (PED)**, renders interactive geospatial heatmaps with service radius overlays, supports statistical outlier management with persistent database storage, and features **KaTeX LaTeX scientific typesetting** alongside a **Dual-Theme (Dark / Light)** UI based on Color Theory.
+An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com** (with multi-platform support for Wag! and Care.com). This platform extracts multi-page market listings, models the empirical relationship between pricing and booking conversion probability via **Empirical Survival Analysis**, identifies the mathematical **Revenue Sweet Spot** using **Price Elasticity of Demand (PED)**, renders interactive geospatial heatmaps with service radius overlays, supports statistical outlier management, and synchronizes real-time market data directly to **Supabase PostgreSQL** with local **SQLite** fallback.
 
 ---
 
@@ -16,8 +17,17 @@ An end-to-end **Data Science & Market Intelligence Platform** for **Rover.com**.
 
 1. **High-Volume Multi-Page Scraping (100+ Sitters)**:
    - Built with **Playwright** and **Playwright-Stealth** to bypass Cloudflare anti-bot fingerprinting (`navigator.webdriver`, WebGL, canvas).
+   - Coordinate-anchored search URLs (`lat`/`lng`) and browser geolocation spoofing guarantee accurate local market targeting regardless of remote server IP geolocation (e.g. Render, AWS).
    - Simulates human behavior with smooth progressive scrolling, realistic navigation headers (`Sec-Fetch`, `Accept-Language`), and stochastic delay intervals.
    - Streams live progress and page-by-page events directly to the UI via **Server-Sent Events (SSE)**.
+
+2. **Multi-Platform Support**:
+   - Extensible Strategy Pattern supporting **Rover.com**, **Wag!**, and **Care.com** with normalized service price catalogs.
+
+3. **Supabase PostgreSQL & Dual Persistence**:
+   - Fully normalized relational database schema (`sitters`, `search_sessions`, `session_sitters`, `sitter_services`).
+   - Scraped sessions persist in local SQLite and automatically synchronize to **Supabase** in real-time.
+   - Fault-tolerant resilience: network drops or cloud downtime gracefully fall back without interrupting ongoing scrapes.
 
 2. **Empirical Revenue Maximizer & Price Elasticity (PED)**:
    - Solves the fundamental market pricing trade-off: **Low price** (high volume, minimal margin) vs. **High price** (high margin, near-zero conversion).
@@ -87,14 +97,17 @@ Interactive documentation is available at **`http://localhost:8000/docs`** (Swag
 | Method | Endpoint | Description | Request Parameters / Body | Response Payload |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Serves the single-page dashboard UI | None | `text/html` |
-| `GET` | `/api/services` | Returns supported Rover service types | None | `{"dog-walking": "Dog Walking", ...}` |
+| `GET` | `/api/services` | Returns supported Rover service types | `platform` (query, opt) | `{"dog-walking": "Dog Walking", ...}` |
+| `GET` | `/api/platforms` | Returns supported marketplace platforms | None | `{"platforms": ["rover", "wag", "care"]}` |
+| `GET` | `/api/sitters/normalized` | Master catalog of sitters & multi-service rates | None | `{"sitters": [...]}` |
 | `GET` | `/api/history` | Lists all historical scraping sessions | None | `{"sessions": [...]}` |
 | `GET` | `/api/history/{session_id}` | Detailed session statistics & listings | `session_id` (path, int) | Complete session object + `full_stats` |
+| `POST`| `/api/history/analyze` | Combined analysis across selected sessions | `{"session_ids": [int]}` | Aggregated stats, 5-service matrix & records |
 | `DELETE`| `/api/history/{session_id}`| Deletes a single session and its sitters | `session_id` (path, int) | `{"status": "success", "deleted_session_id": int}` |
 | `DELETE`| `/api/history` | Batch deletes multiple search sessions | `{"session_ids": [int]}` | `{"status": "success", "deleted_count": int}` |
-| `GET` | `/api/scrape/stream` | Multi-page scraping live SSE stream | `location`, `service_type`, `radius_km`, `max_pages`, `max_results` | `text/event-stream` SSE events |
+| `POST`| `/api/database/reset` | Clears all tables in the database | None | `{"status": "success", "message": str}` |
+| `GET` | `/api/scrape/stream` | Multi-page scraping live SSE stream | `location`, `service_type`, `radius_km`, `max_pages`, `max_results`, `platform` | `text/event-stream` SSE events |
 | `POST` | `/api/analytics/recalculate` | Dynamic stats re-calculation | `{"session_id": int, "excluded_indices": [int], "records": [...]}` | `{"stats": {...}, "auto_outliers": [...]}` |
-| `POST` | `/api/sitters/{sitter_id}/exclude` | Persists sitter exclusion in SQLite | `sitter_id` (path), `{"is_excluded": bool, "reason": str}` | `{"status": "success", "sitter_id": int}` |
 | `GET` | `/api/analytics/temporal-trends` | Time-series historical price trends | None | `{"trends": [...]}` |
 | `GET` | `/api/export/csv/{session_id}` | CSV download of a specific session | `session_id` (path, int) | `text/csv` attachment |
 | `GET` | `/api/export/master-csv` | Consolidated historical CSV archive | None | `text/csv` master archive |
@@ -104,7 +117,7 @@ Interactive documentation is available at **`http://localhost:8000/docs`** (Swag
 
 ## 🧪 Automated Testing Suite
 
-The repository includes a comprehensive unit testing suite using [`pytest`](https://docs.pytest.org/):
+The repository includes a comprehensive unit testing suite using [`pytest`](https://docs.pytest.org/) with **44 automated tests** covering analytics, persistence, scrapers, and Supabase synchronization:
 
 ### Running the Tests
 
@@ -113,25 +126,39 @@ The repository includes a comprehensive unit testing suite using [`pytest`](http
 PYTHONPATH=. .venv/bin/pytest tests/ -v
 ```
 
-### Test Coverage
+### Test Coverage Highlights
 
 - **[`tests/test_analytics.py`](tests/test_analytics.py)**:
-  - `test_market_statistics_basic`: Validates percentiles ($P_{10}, P_{25}, P_{75}, P_{90}$), trimmed means, and IQR dispersion.
-  - `test_market_statistics_empty`: Verifies safe handling of empty datasets without division-by-zero crashes.
-  - `test_market_statistics_with_exclusions`: Tests dynamic outlier exclusion calculation accuracy.
-  - `test_detect_outliers_iqr`: Validates Tukey's $1.5 \times \text{IQR}$ upper and lower boundary classification.
-  - `test_pricing_sweet_spot_empirical_survival`: Verifies monotonicity of the survival demand curve and Price Elasticity calculation.
+  - Percentiles ($P_{10}, P_{25}, P_{75}, P_{90}$), trimmed means, and IQR dispersion.
+  - Safe handling of empty datasets without division-by-zero crashes.
+  - Dynamic outlier exclusion calculation and Tukey's $1.5 \times \text{IQR}$ boundary classification.
+  - Pricing sweet spot empirical survival curves and Price Elasticity of Demand.
 
 - **[`tests/test_database.py`](tests/test_database.py)**:
-  - `test_database_lifecycle_and_schema`: Verifies table creation, schema integrity, and index existence.
-  - `test_save_and_retrieve_session`: Tests full write-read cycle and verifies that sitter exclusion state updates persist correctly in SQLite.
-  - `test_delete_session_and_batch`: Validates single and batch deletion of sessions and cascading sitter listings.
+  - Table creation, schema migrations, and index validation in SQLite.
+  - Write-read cycles, sitter exclusion state updates, and batch deletions.
+
+- **[`tests/test_scraper_logic.py`](tests/test_scraper_logic.py)**:
+  - Scraper factory instantiation and platform dispatch (`rover`, `wag`, `care`).
+  - Search URL query parameter construction and coordinate anchoring (`lat`/`lng`) to prevent cloud IP location drift.
+  - CSS selector heuristics and fallback extraction routines.
+
+- **[`tests/test_supabase_sync.py`](tests/test_supabase_sync.py)**:
+  - Real-time automatic background syncing of scraped sessions to Supabase PostgreSQL.
+  - Payload transformation and UUID generation.
+  - Resilience against network drops or missing Supabase credentials (graceful fallback).
 
 ---
 
 ## 🚀 Deployment & Installation
 
-### Option 1: Quick Deployment with Docker (Recommended)
+### Option 1: Cloud Deployment on Render.com (Recommended for Free Hosting)
+
+Deploy with a managed Docker environment on Render connected to Supabase:
+- Follow the detailed step-by-step guide in [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
+- To configure and migrate your Supabase PostgreSQL database, follow [SUPABASE_DEPLOYMENT.md](SUPABASE_DEPLOYMENT.md).
+
+### Option 2: Quick Deployment with Docker
 
 ```bash
 # Clone repository
@@ -143,24 +170,15 @@ docker compose up --build -d
 ```
 Access the application at **`http://localhost:8000`**.
 
-### Option 2: Local Setup using `uv` (Fastest)
+### Option 3: Local Setup using `uv` or `venv`
 
 ```bash
+# Using uv (fastest)
 uv venv
 source .venv/bin/activate
 uv pip install -r requirements.txt
 playwright install chromium
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Option 3: Standard `venv` & `pip`
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ---
@@ -169,22 +187,41 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ```
 .
-├── main.py               # FastAPI server, SSE streaming, lifespan management & REST API
-├── scraper.py            # Playwright-Stealth multi-page crawler with human anti-fingerprinting
-├── analytics.py          # Empirical Survival pricing, Price Elasticity of Demand & IQR statistics
-├── database.py           # SQLite context manager, indexing, schema migrations & persistence
-├── tests/
-│   ├── test_analytics.py # Unit tests for statistics, IQR filtering & empirical optimizer
-│   └── test_database.py  # Unit tests for database transactions, indexes & exclusions
-├── Dockerfile            # Container image with Playwright Chromium & dependencies
-├── docker-compose.yml    # Compose orchestration configuration
-├── requirements.txt      # Python dependencies (FastAPI, Playwright, Pandas, NumPy, etc.)
-├── static/
-│   ├── index.html        # Interactive Single-Page Dashboard & DS Academy
-│   ├── style.css         # Dual-theme CSS system with Color Theory & WCAG AAA contrast
-│   └── app.js            # Leaflet map, Chart.js, KaTeX auto-render & batch delete handlers
-├── LICENSE               # MIT License
-└── README.md             # Project documentation and API reference
+├── app/                              # Modular FastAPI application package
+│   ├── main.py                       # FastAPI application factory, middleware, SSE streaming & lifespan
+│   ├── config.py                     # Centralized settings & Supabase/SQLite environment config
+│   ├── api/
+│   │   └── routes/                   # Modular REST API endpoints
+│   │       ├── analytics.py          # Temporal trends & recalculation routes
+│   │       ├── export.py             # CSV and direct database backup endpoints
+│   │       ├── history.py            # Session management, batch deletion & analysis
+│   │       └── scraping.py           # SSE stream scraper & real-time Supabase sync trigger
+│   ├── db/
+│   │   ├── session.py                # SQLite context manager, indexing & schema migrations
+│   │   ├── supabase_client.py        # Supabase client singleton & connectivity checks
+│   │   └── supabase_sync.py          # Real-time background sync engine (SQLite -> Supabase)
+│   └── services/
+│       ├── analytics.py              # Empirical survival pricing, PED, & IQR statistics
+│       └── scraper/                  # Multi-platform browser crawler engine
+│           ├── browser.py            # Playwright browser manager with geolocation spoofing
+│           ├── factory.py            # Strategy factory for Rover, Wag, and Care
+│           └── rover_strategy.py     # Rover crawler with lat/lng anchor & anti-fingerprinting
+├── tests/                            # Comprehensive Pytest suite (44 unit tests)
+│   ├── test_analytics.py             # Math, economics, and statistical validations
+│   ├── test_database.py              # SQLite persistence, migrations, and transactions
+│   ├── test_scraper_logic.py         # Crawler strategies, coordinate anchoring & parsers
+│   └── test_supabase_sync.py         # Dual-persistence & Supabase sync resilience tests
+├── static/                           # Modern SPA dashboard frontend
+│   ├── index.html                    # Dashboard UI with Leaflet, KaTeX, and Chart.js
+│   ├── style.css                     # Responsive design system & dark/light theme tokens
+│   └── app.js                        # Frontend state, SSE client, Leaflet map & charting
+├── Dockerfile                        # Multi-stage production container with Playwright Chromium
+├── docker-compose.yml                # Local orchestration configuration
+├── RENDER_DEPLOYMENT.md              # Complete Render.com deployment manual
+├── SUPABASE_DEPLOYMENT.md            # Supabase schema definitions and migration manual
+├── requirements.txt                  # Python dependencies
+├── LICENSE                           # MIT License
+└── README.md                         # Project documentation and architecture guide
 ```
 
 ---

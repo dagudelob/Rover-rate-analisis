@@ -178,3 +178,25 @@ def test_extract_all_services_with_house_sitting_context():
     assert types.get("house-sitting") == 75.0
     assert types.get("dog-walking") == 25.0
 
+
+def test_rover_search_url_anchors_coordinates():
+    """Validates that search URLs include lat and lng parameters to avoid cloud IP fallback."""
+    from app.services.scraper.rover_strategy import ROVER_SERVICE_PARAM_MAP
+    import urllib.parse
+
+    location = "Downtown Toronto, ON"
+    center_lat, center_lng = 43.6532, -79.3832
+    encoded_location = urllib.parse.quote(location)
+    rover_param = ROVER_SERVICE_PARAM_MAP["dog-walking"]
+
+    url = (
+        f"https://www.rover.com/search/?service_type={rover_param}"
+        f"&location={encoded_location}"
+        f"&lat={center_lat:.6f}&lng={center_lng:.6f}"
+        f"&page=1"
+    )
+
+    assert "lat=43.653200" in url
+    assert "lng=-79.383200" in url
+    assert "service_type=dog-walking" in url
+

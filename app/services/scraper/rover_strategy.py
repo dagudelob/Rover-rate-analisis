@@ -81,8 +81,9 @@ class RoverScraperStrategy(BaseScraperStrategy):
         radius_miles = convert_km_to_rover_radius_miles(radius_km)
         encoded_location = urllib.parse.quote(location)
 
-        playwright, browser, context, page = await create_browser_context(proxy_url)
-        emit("log", {"message": "Launching Chromium browser with stealth anti-detection flags..."})
+        geo_payload = {"latitude": center_lat, "longitude": center_lng}
+        playwright, browser, _context, page = await create_browser_context(proxy_url=proxy_url, geolocation=geo_payload)
+        emit("log", {"message": f"Launching Chromium browser with stealth anti-detection flags & geolocation: [{center_lat:.4f}, {center_lng:.4f}]..."})
 
         sitter_map: Dict[str, Dict[str, Any]] = {}
         pages_completed_total = 0
@@ -96,9 +97,13 @@ class RoverScraperStrategy(BaseScraperStrategy):
                 })
 
                 for current_page in range(1, max_pages + 1):
+                    # Anchor location explicitly with resolved geographic coordinates (lat/lng)
+                    # This prevents Rover from defaulting to the cloud server's physical IP location (e.g. Oregon)
                     url = (
                         f"https://www.rover.com/search/?service_type={rover_param}"
-                        f"&location={encoded_location}&page={current_page}"
+                        f"&location={encoded_location}"
+                        f"&lat={center_lat:.6f}&lng={center_lng:.6f}"
+                        f"&page={current_page}"
                     )
                     if radius_miles is not None:
                         url += f"&radius={radius_miles}"

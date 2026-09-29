@@ -19,7 +19,10 @@ logger = logging.getLogger("rover.services.scraper.browser")
 _stealth = Stealth()
 
 
-async def create_browser_context(proxy_url: Optional[str] = None) -> tuple:
+async def create_browser_context(
+    proxy_url: Optional[str] = None,
+    geolocation: Optional[Dict[str, float]] = None,
+) -> tuple:
     """
     Launches a Chromium browser instance with anti-detection flags and
     returns (playwright_instance, browser, context, page).
@@ -56,6 +59,10 @@ async def create_browser_context(proxy_url: Optional[str] = None) -> tuple:
             "Upgrade-Insecure-Requests": "1",
         },
     }
+
+    if geolocation and "latitude" in geolocation and "longitude" in geolocation:
+        context_kwargs["geolocation"] = geolocation
+        context_kwargs["permissions"] = ["geolocation"]
 
     if proxy_url:
         context_kwargs["proxy"] = {"server": proxy_url}
