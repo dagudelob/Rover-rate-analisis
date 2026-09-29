@@ -62,5 +62,5 @@ COPY . .
 # Expose FastAPI application port
 EXPOSE 8000
 
-# Run FastAPI production server with Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI production server with Uvicorn, dynamically binding to $PORT if set by cloud platform (e.g. Render)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
