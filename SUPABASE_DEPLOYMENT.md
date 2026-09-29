@@ -64,19 +64,24 @@ The repository includes a ready-to-run idempotent SQL script with tables, indexe
 
 ## Step 4: Configure Local Environment Variables
 
-1. In your local repository root, create or update `.env`:
+All Supabase credentials and database settings are automatically loaded from your local `.env` file (which is gitignored to protect your project secrets).
+
+1. In your local repository root, ensure your `.env` file exists:
    ```bash
-   cp .env.example .env
+   cp -n .env.example .env
    ```
-2. Set your Supabase credentials:
+2. Configure your credentials inside `.env` matching your Supabase project keys:
    ```env
    # Database Configuration
    DB_PATH=rover_market.db
 
-   # Supabase Integration
+   # Supabase Integration (loaded automatically by app/config.py)
    SUPABASE_URL=https://<your-project-ref>.supabase.co
-   SUPABASE_KEY=<your-anon-or-service-role-key>
-   SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+   SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   SUPABASE_SECRET_KEY=sb_secret_...
+   # Legacy aliases are also supported:
+   # SUPABASE_KEY=<your-key>
+   # SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 
    # Server & CORS
    CORS_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
@@ -86,8 +91,13 @@ The repository includes a ready-to-run idempotent SQL script with tables, indexe
    SCRAPER_MAX_RESULTS=200
    ```
 
+3. Verify that your credentials are correctly recognized from `.env`:
+   ```bash
+   .venv/bin/python -c "from app.config import settings; print('Connected to:', settings.supabase_url); print('Supabase enabled:', settings.is_supabase_enabled)"
+   ```
+
 > [!TIP]
-> For backend data ingestion scripts and migrations, ensure `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_KEY` set to the service role key) is provided so inserts are permitted by PostgreSQL RLS.
+> For backend data ingestion scripts and migrations, ensure `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) is present in `.env` so that inserts bypass PostgreSQL Row Level Security (RLS).
 
 ---
 
