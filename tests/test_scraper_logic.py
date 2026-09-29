@@ -1,12 +1,10 @@
-import re
-import pytest
 from app.services.scraper.parser import (
     extract_price,
     parse_sitter_name_and_headline,
     build_sitter_record,
     extract_all_services_and_prices,
 )
-from app.services.scraper.geocoding import extract_postal_code_fsa, geocode_postal_code_with_city
+from app.services.scraper.geocoding import extract_postal_code_fsa
 from app.services.scraper.postal_data import lookup_fsa_data
 
 def extract_service_price(card_text: str, service_type: str, price_text: str = ""):
@@ -112,7 +110,7 @@ def test_overnight_boarding_service_matching():
     per night
     5.0 stars (15 reviews)
     """
-    raw, num, unit = extract_service_price(card, "overnight-boarding")
+    _, num, unit = extract_service_price(card, "overnight-boarding")
     assert num == 60.0
     assert unit == "per night"
 
@@ -124,7 +122,7 @@ def test_drop_in_visits_service_matching():
     total per visit
     4.9 stars
     """
-    raw, num, unit = extract_service_price(card, "drop-in-visits")
+    _, num, unit = extract_service_price(card, "drop-in-visits")
     assert num == 28.0
     assert unit == "per visit"
 
@@ -136,7 +134,7 @@ def test_day_care_service_matching():
     total per day
     5.0 stars
     """
-    raw, num, unit = extract_service_price(card, "day-care")
+    _, num, unit = extract_service_price(card, "day-care")
     assert num == 35.0
     assert unit == "per day"
 
@@ -180,7 +178,7 @@ def test_extract_all_services_with_house_sitting_context():
 
 
 def test_rover_search_url_anchors_coordinates():
-    """Validates that search URLs include lat and lng parameters to avoid cloud IP fallback."""
+    """Validates that search URLs include lat and lng parameters when coordinates are provided."""
     from app.services.scraper.rover_strategy import ROVER_SERVICE_PARAM_MAP
     import urllib.parse
 
@@ -199,4 +197,18 @@ def test_rover_search_url_anchors_coordinates():
     assert "lat=43.653200" in url
     assert "lng=-79.383200" in url
     assert "service_type=dog-walking" in url
+
+
+def test_dynamic_geocoding_multi_provider():
+    """Verifies that geocode_location resolves coordinates dynamically without hardcoded values."""
+    from app.services.scraper.geocoding import geocode_location
+
+    coords = geocode_location("Toronto, ON, Canada")
+    assert coords is not None
+    assert isinstance(coords, tuple)
+    assert len(coords) == 2
+    # Verify reasonable geographic bounds for Toronto without exact float pinning
+    lat, lng = coords
+    assert 43.0 <= lat <= 44.5
+    assert -80.0 <= lng <= -78.5
 

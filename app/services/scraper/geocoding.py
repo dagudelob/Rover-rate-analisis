@@ -51,18 +51,38 @@ def geocode_location(location_name: str) -> Optional[Tuple[float, float]]:
     if cache_key in _GEOCODE_CACHE:
         return _GEOCODE_CACHE[cache_key]
 
+    # 1. Primary: Nominatim / OpenStreetMap
     try:
         encoded = urllib.parse.quote(location_name)
         url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&limit=1"
         req = urllib.request.Request(url, headers={"User-Agent": "RoverMarketIntelligence/3.5 (contact@roverintel.local)"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=4) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            if data:
+            if data and len(data) > 0:
                 coords = (float(data[0]["lat"]), float(data[0]["lon"]))
                 _GEOCODE_CACHE[cache_key] = coords
                 return coords
     except Exception as exc:
-        logger.warning("Geocoding failed for '%s': %s", location_name, exc)
+        logger.debug("Primary Nominatim geocoding failed for '%s': %s", location_name, exc)
+
+    # 2. Secondary fallback: Photon / Komoot (OpenStreetMap-based geocoding engine)
+    try:
+        encoded = urllib.parse.quote(location_name)
+        url = f"https://photon.komoot.io/api/?q={encoded}&limit=1"
+        req = urllib.request.Request(url, headers={"User-Agent": "RoverMarketIntelligence/3.5 (contact@roverintel.local)"})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            features = data.get("features", [])
+            if features and len(features) > 0:
+                geom = features[0].get("geometry", {})
+                coordinates = geom.get("coordinates", [])
+                if len(coordinates) >= 2:
+                    # Photon returns [lon, lat]
+                    coords = (float(coordinates[1]), float(coordinates[0]))
+                    _GEOCODE_CACHE[cache_key] = coords
+                    return coords
+    except Exception as exc:
+        logger.warning("Secondary Photon geocoding failed for '%s': %s", location_name, exc)
 
     _GEOCODE_CACHE[cache_key] = None
     return None

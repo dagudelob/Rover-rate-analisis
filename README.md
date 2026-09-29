@@ -117,7 +117,7 @@ Interactive documentation is available at **`http://localhost:8000/docs`** (Swag
 
 ## 🧪 Automated Testing Suite
 
-The repository includes a comprehensive unit testing suite using [`pytest`](https://docs.pytest.org/) with **44 automated tests** covering analytics, persistence, scrapers, and Supabase synchronization:
+The repository includes a comprehensive unit testing suite using [`pytest`](https://docs.pytest.org/) with **45 automated tests** covering analytics, persistence, scrapers, and Supabase synchronization:
 
 ### Running the Tests
 

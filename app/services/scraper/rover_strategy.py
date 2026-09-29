@@ -74,16 +74,58 @@ class RoverScraperStrategy(BaseScraperStrategy):
             )
         })
 
+        # ── 1. Dynamic Geolocation Resolution (No hardcoding) ──
         center_coords = geocode_location(location)
-        center_lat, center_lng = center_coords if center_coords else (43.6532, -79.3832)
-        emit("log", {"message": f"Resolved base location coordinates: [{center_lat:.4f}, {center_lng:.4f}]"})
+        center_lat: Optional[float] = None
+        center_lng: Optional[float] = None
+
+        if center_coords:
+            center_lat, center_lng = center_coords
+            emit("log", {"message": f"Resolved location coordinates via open geocoder: [{center_lat:.4f}, {center_lng:.4f}]"})
+        else:
+            emit("log", {"message": f"Open geocoder unresolved for '{location}'. Will use Rover UI autocomplete resolution."})
 
         radius_miles = convert_km_to_rover_radius_miles(radius_km)
         encoded_location = urllib.parse.quote(location)
 
-        geo_payload = {"latitude": center_lat, "longitude": center_lng}
+        geo_payload = {"latitude": center_lat, "longitude": center_lng} if (center_lat is not None and center_lng is not None) else None
         playwright, browser, _context, page = await create_browser_context(proxy_url=proxy_url, geolocation=geo_payload)
-        emit("log", {"message": f"Launching Chromium browser with stealth anti-detection flags & geolocation: [{center_lat:.4f}, {center_lng:.4f}]..."})
+        emit("log", {"message": "Launching Chromium browser with stealth anti-detection flags..."})
+
+        # ── 2. UI Autocomplete Resolution Fallback if coordinates are not yet resolved ──
+        if center_lat is None or center_lng is None:
+            try:
+                emit("log", {"message": f"Navigating to Rover home to resolve '{location}' via native place autocomplete..."})
+                await page.goto("https://www.rover.com/search/", wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(1000)
+
+                # Find search input, fill location and let Rover suggest the official location
+                input_selector = "input[name='location'], input[data-testid='location-input'], input[placeholder*='address'], input[type='search']"
+                loc_input = await page.query_selector(input_selector)
+                if loc_input:
+                    await loc_input.fill("")
+                    await loc_input.type(location, delay=70)
+                    await page.wait_for_timeout(1500)
+                    # Check for autocomplete dropdown item
+                    dropdown_item = await page.query_selector(".autocomplete-suggestion, [role='option'], .pac-item, li[data-testid*='suggestion']")
+                    if dropdown_item:
+                        await dropdown_item.click()
+                        await page.wait_for_timeout(1000)
+                    # Submit search form or click search button
+                    search_btn = await page.query_selector("button[type='submit'], button[data-testid='search-button']")
+                    if search_btn:
+                        await search_btn.click()
+                        await page.wait_for_load_state("domcontentloaded", timeout=20000)
+                        current_url = page.url
+                        parsed_url = urllib.parse.urlparse(current_url)
+                        qparams = urllib.parse.parse_qs(parsed_url.query)
+                        if "lat" in qparams and "lng" in qparams:
+                            center_lat = float(qparams["lat"][0])
+                            center_lng = float(qparams["lng"][0])
+                            emit("log", {"message": f"Successfully resolved coordinates via Rover UI autocomplete: [{center_lat:.4f}, {center_lng:.4f}]"})
+            except Exception as auto_exc:
+                logger.warning("Rover UI autocomplete fallback error: %s", auto_exc)
+                emit("log", {"message": f"Autocomplete interaction bypassed ({auto_exc}). Proceeding with standard search query."})
 
         sitter_map: Dict[str, Dict[str, Any]] = {}
         pages_completed_total = 0
@@ -97,14 +139,14 @@ class RoverScraperStrategy(BaseScraperStrategy):
                 })
 
                 for current_page in range(1, max_pages + 1):
-                    # Anchor location explicitly with resolved geographic coordinates (lat/lng)
-                    # This prevents Rover from defaulting to the cloud server's physical IP location (e.g. Oregon)
+                    # Anchor location explicitly with dynamically resolved coordinates if available
                     url = (
                         f"https://www.rover.com/search/?service_type={rover_param}"
                         f"&location={encoded_location}"
-                        f"&lat={center_lat:.6f}&lng={center_lng:.6f}"
-                        f"&page={current_page}"
                     )
+                    if center_lat is not None and center_lng is not None:
+                        url += f"&lat={center_lat:.6f}&lng={center_lng:.6f}"
+                    url += f"&page={current_page}"
                     if radius_miles is not None:
                         url += f"&radius={radius_miles}"
 
